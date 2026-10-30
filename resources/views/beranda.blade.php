@@ -3,6 +3,7 @@
 @section('judul', 'Beranda — Smart Store Sahih')
 
 @section('nav')
+    <a href="{{ route('tukar') }}" class="text-tinta/70 hover:underline">Tukar PIN</a>
     <span class="text-tinta/70">{{ $member->username }}</span>
     <form method="POST" action="{{ route('logout') }}">
         @csrf
@@ -21,6 +22,15 @@
         };
         $labelPoin = ['pa' => 'Poin Afiliasi', 'pr' => 'Poin Reward', 'pl' => 'Poin Leadership'];
     @endphp
+
+    @if (session('status'))
+        <p class="mb-5 rounded-kartu border border-hijau/40 bg-hijau/10 px-3 py-2 text-sm text-hijau-tua">
+            {{ session('status') }}
+            @if (session('status_trx'))
+                <span class="text-hijau-tua/70">&middot; {{ session('status_trx') }}</span>
+            @endif
+        </p>
+    @endif
 
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\PinController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\MemberLoginController;
+use App\Http\Controllers\Member\PinRedemptionController;
 use App\Http\Controllers\MemberDashboardController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,9 @@ Route::post('/keluar', [MemberLoginController::class, 'destroy'])->name('logout'
 
 Route::middleware('auth:web')->group(function () {
     Route::get('/beranda', [MemberDashboardController::class, 'index'])->name('beranda');
+
+    Route::get('/tukar', [PinRedemptionController::class, 'create'])->name('tukar');
+    Route::post('/tukar', [PinRedemptionController::class, 'store'])->middleware('throttle:10,1')->name('tukar.store');
 });
 
 // Admin

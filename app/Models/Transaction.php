@@ -13,5 +13,6 @@ class Transaction extends Model
         'sponsor_bonus_total' => 'integer'];
 
     public function member() { return $this->belongsTo(Member::class); }
+    public function pin() { return $this->belongsTo(Pin::class); }
     public function bonuses() { return $this->hasMany(BonusEntry::class, 'source_transaction_id'); }
 }
