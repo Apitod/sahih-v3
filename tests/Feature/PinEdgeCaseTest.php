@@ -4,26 +4,27 @@ use App\Models\Pin;
 use App\Models\Transaction;
 use App\Models\BonusEntry;
 
-// === Kasus 1: PIN harga 0 ===
-it('PIN harga 0 tetap bisa dipakai dan bonus sponsor juga 0', function () {
+// === Kasus 1: PIN RO dengan harga 0 ===
+// Sejak penjaga harga di TransactionPoster (DECISIONS #56: Rp 500.000 per poin),
+// PIN RO 1 poin berharga 0 ditolak saat dipakai, bukan diterima diam-diam.
+it('PIN RO harga 0 ditolak saat ditukar', function () {
     $sponsor = member('distributor');
     $anggota = member('reseller', $sponsor);
     $kode = pin('ro', 1, 0);
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
-        ->assertRedirect('/beranda');
+        ->assertSessionHasErrors('code');
 
-    expect($kode->fresh()->status)->toBe('used')
-        ->and(Transaction::first()->amount)->toBe(0)
-        ->and(Transaction::first()->sponsor_bonus_total)->toBe(0);
+    expect($kode->fresh()->status)->toBe('issued')
+        ->and(Transaction::count())->toBe(0);
 });
 
 // === Kasus 2: PIN poin 0 untuk repeat order ===
 it('PIN RO dengan poin 0 tetap tercatat, sponsor tidak dapat poin', function () {
     $sponsor = member('agent');
     $anggota = member('reseller', $sponsor);
-    $kode = pin('ro', 0, 500000);
+    $kode = pin('ro', 0, 0);
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
@@ -38,7 +39,7 @@ it('PIN RO dengan poin 0 tetap tercatat, sponsor tidak dapat poin', function () 
 it('anggota kedua ditolak setelah anggota pertama memakai PIN yang sama', function () {
     $a1 = member('reseller');
     $a2 = member('reseller');
-    $kode = pin('ro', 1, 600000);
+    $kode = pin('ro', 1, 500000);
 
     $this->actingAs($a1, 'web')->post('/tukar', ['code' => $kode->code]);
     expect($kode->fresh()->status)->toBe('used');
@@ -86,7 +87,7 @@ it('Manager tidak bisa pakai PIN upgrade ke Distributor', function () {
 // === Kasus 6: PIN dititipkan ke diri sendiri — boleh ===
 it('PIN yang dititipkan ke diri sendiri boleh dipakai', function () {
     $anggota = member('reseller');
-    $kode = pin('ro', 1, 600000);
+    $kode = pin('ro', 1, 500000);
     $kode->update(['assigned_member_id' => $anggota->id]);
 
     $this->actingAs($anggota, 'web')
@@ -100,7 +101,7 @@ it('PIN yang dititipkan ke diri sendiri boleh dipakai', function () {
 // === Kasus 7: Kode dengan spasi di tengah ===
 it('kode PIN dengan spasi di tengah tetap dikenali', function () {
     $anggota = member('reseller');
-    $kode = pin('ro', 1, 600000);
+    $kode = pin('ro', 1, 500000);
 
     // sisip spasi di tengah kode
     $tengah = (int) (strlen($kode->code) / 2);

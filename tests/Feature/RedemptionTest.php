@@ -6,7 +6,7 @@ use App\Models\Transaction;
 it('anggota memakai PIN repeat order', function () {
     $sponsor = member('distributor');
     $anggota = member('reseller', $sponsor);
-    $kode = pin('ro', 3, 1800000);
+    $kode = pin('ro', 3, 1500000);
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
@@ -21,7 +21,7 @@ it('anggota memakai PIN repeat order', function () {
 
 it('kode boleh ditulis huruf kecil dan berspasi', function () {
     $anggota = member('reseller');
-    $kode = pin('ro', 1, 600000);
+    $kode = pin('ro', 1, 500000);
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => ' '.strtolower($kode->code).' '])
@@ -32,7 +32,7 @@ it('kode boleh ditulis huruf kecil dan berspasi', function () {
 
 it('PIN yang sudah dipakai tidak bisa dipakai lagi', function () {
     $anggota = member('reseller');
-    $kode = pin('ro', 1, 600000);
+    $kode = pin('ro', 1, 500000);
 
     $this->actingAs($anggota, 'web')->post('/tukar', ['code' => $kode->code]);
     $this->actingAs($anggota, 'web')
@@ -44,7 +44,7 @@ it('PIN yang sudah dipakai tidak bisa dipakai lagi', function () {
 
 it('PIN yang dibatalkan admin tidak bisa dipakai', function () {
     $anggota = member('reseller');
-    $kode = pin('ro', 1, 600000);
+    $kode = pin('ro', 1, 500000);
     $kode->update(['status' => 'void']);
 
     $this->actingAs($anggota, 'web')
@@ -57,7 +57,7 @@ it('PIN yang dibatalkan admin tidak bisa dipakai', function () {
 it('PIN yang dititipkan ke anggota lain ditolak', function () {
     $pemilik = member('reseller');
     $lain = member('reseller');
-    $kode = pin('ro', 1, 600000);
+    $kode = pin('ro', 1, 500000);
     $kode->update(['assigned_member_id' => $pemilik->id]);
 
     $this->actingAs($lain, 'web')
@@ -134,14 +134,14 @@ it('pesan galat seragam untuk PIN tidak ada, sudah dipakai, dan milik orang lain
         ->assertSessionHasErrors(['code' => $pesan]);
 
     // 2. Sudah dipakai
-    $usedPin = pin('ro', 1, 600000);
+    $usedPin = pin('ro', 1, 500000);
     $usedPin->update(['status' => 'used']);
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $usedPin->code])
         ->assertSessionHasErrors(['code' => $pesan]);
 
     // 3. Milik orang lain
-    $otherPin = pin('ro', 1, 600000);
+    $otherPin = pin('ro', 1, 500000);
     $otherPin->update(['assigned_member_id' => $lain->id]);
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $otherPin->code])
@@ -164,7 +164,7 @@ it('tamu tidak bisa membuka halaman tukar PIN', function () {
 it('RO tidak membayar bonus sponsor', function () {
     $sponsor = member('distributor');
     $anggota = member('reseller', $sponsor);
-    $kode = pin('ro', 3, 1800000);
+    $kode = pin('ro', 3, 1500000);
 
     $this->actingAs($anggota, 'web')->post('/tukar', ['code' => $kode->code]);
 
@@ -214,7 +214,7 @@ it('pembeli mendapat PR dari PIN upgrade tanpa PA pribadi', function () {
 
 it('pembeli mendapat PR dari PIN RO tanpa PA pribadi', function () {
     $anggota = member();
-    $kode = pin('ro', 3, 1800000);
+    $kode = pin('ro', 3, 1500000);
 
     app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'ro');
 

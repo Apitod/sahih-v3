@@ -22,7 +22,7 @@ function seedMilestones(): void
 
 it('service menolak anggota dibekukan tanpa memakai PIN atau membuat transaksi', function () {
     $buyer = member('reseller', null, ['status' => 'suspended']);
-    $pin = pin('ro', 1, 600000);
+    $pin = pin('ro', 1, 500000);
 
     expect(fn () => app(TransactionPoster::class)->post($buyer, $pin->id, 'ro'))
         ->toThrow(RuntimeException::class);
@@ -213,7 +213,7 @@ it('upgrade tidak menurunkan peringkat yang sudah lebih tinggi', function () {
 it('post() menolak PIN milik orang lain tanpa membuat transaksi atau bonus', function () {
     $owner = member('reseller');
     $buyer = member('reseller');
-    $pin = pin('ro', 1, 600000);
+    $pin = pin('ro', 1, 500000);
     $pin->update(['assigned_member_id' => $owner->id]);
 
     expect(fn () => app(TransactionPoster::class)->post($buyer, $pin->id, 'ro'))

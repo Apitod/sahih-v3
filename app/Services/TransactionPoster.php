@@ -62,6 +62,32 @@ class TransactionPoster
                 throw new \RuntimeException("Jenis PIN {$pin->type} tidak cocok untuk transaksi {$type}.");
             }
 
+            // Penjaga harga RO (DECISIONS #56): Rp 500.000 per poin, diperiksa lagi saat
+            // PIN dipakai. PIN yang terbit sebelum aturan ini, atau baris yang diubah
+            // langsung di database, tidak boleh lolos dengan nominal lama.
+            if ($type === 'ro') {
+                $expectedPrice = (int) $pin->points * (int) config('sahih.ro_price_per_point');
+
+                if ((int) $pin->price !== $expectedPrice) {
+                    throw new \RuntimeException("Harga PIN {$pin->code} tidak sesuai untuk RO {$pin->points} poin.");
+                }
+            }
+
+            // Penjaga PIN registrasi: poin harus salah satu paket §2, harga Rp 600.000/poin (§1).
+            if ($type === 'join') {
+                $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
+
+                if (! in_array((int) $pin->points, $paket, true)) {
+                    throw new \RuntimeException("PIN {$pin->code} berisi {$pin->points} poin — bukan paket pendaftaran.");
+                }
+
+                $expectedPrice = (int) $pin->points * (int) config('sahih.registration_price_per_point');
+
+                if ((int) $pin->price !== $expectedPrice) {
+                    throw new \RuntimeException("Harga PIN {$pin->code} tidak sesuai untuk pendaftaran {$pin->points} poin.");
+                }
+            }
+
             // Penjaga arah peringkat: upgrade tidak boleh ke peringkat sama atau lebih rendah (keputusan #55).
             if ($type === 'upgrade') {
                 if ($pin->target_rank === null) {

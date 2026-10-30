@@ -14,7 +14,15 @@ class RankResolver
     /** Urutan peringkat, dipakai untuk membandingkan. */
     public function weight(string $rank): int
     {
-        return array_search($rank, ['reseller', 'agent', 'distributor', 'manager'], true);
+        $weight = array_search($rank, ['reseller', 'agent', 'distributor', 'manager'], true);
+
+        // Dulu mengembalikan false untuk peringkat tak dikenal, lalu perbandingan
+        // longgar menganggapnya peringkat terendah. Sekarang ditolak terang-terangan.
+        if ($weight === false) {
+            throw new \InvalidArgumentException("Peringkat tidak dikenal: {$rank}");
+        }
+
+        return $weight;
     }
 
     public function rateBp(string $rank): int

@@ -167,7 +167,7 @@ it('keluar mengakhiri sesi anggota', function () {
     $this->assertGuest('web');
 });
 
-it('11 percobaan login anggota dari satu IP tidak mengunci login admin', function () {
+it('31 percobaan login anggota dari satu IP tidak mengunci login admin', function () {
     $admin = Admin::create([
         'name' => 'Admin Uji',
         'email' => 'admin@uji.local',
@@ -176,13 +176,15 @@ it('11 percobaan login anggota dari satu IP tidak mengunci login admin', functio
         'is_active' => true,
     ]);
 
-    for ($i = 0; $i < 10; $i++) {
+    // Batas per IP untuk /masuk sekarang 30/menit (satu kantor bisa satu IP),
+    // sedangkan batas per akun tetap 10/menit di controller.
+    for ($i = 0; $i < 30; $i++) {
         $this->withServerVariables(['REMOTE_ADDR' => '192.168.1.1'])
             ->post('/masuk', ['username' => 'user-salah-'.$i, 'password' => 'salah']);
     }
 
     $this->withServerVariables(['REMOTE_ADDR' => '192.168.1.1'])
-        ->post('/masuk', ['username' => 'user-salah-10', 'password' => 'salah'])
+        ->post('/masuk', ['username' => 'user-salah-30', 'password' => 'salah'])
         ->assertStatus(429);
 
     $this->withServerVariables(['REMOTE_ADDR' => '192.168.1.1'])

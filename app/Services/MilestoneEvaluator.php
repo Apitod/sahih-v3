@@ -39,6 +39,17 @@ class MilestoneEvaluator
         if ($cycleLength < 1) {
             $cycleLength = (int) $rewards->max('threshold');
         }
+
+        // Hadiah yang ambangnya melebihi panjang satu putaran tidak bisa dinilai dengan
+        // hitungan putaran: dulu hadiah seperti itu langsung jadi hak member di putaran
+        // pertama (mis. ambang 10.000 diberikan saat PR baru 3.500). Sekarang dilewati
+        // sampai aturan untuk hadiah di atas 3.500 diputuskan Owner.
+        $rewards = $rewards->filter(fn ($reward) => (int) $reward->threshold <= $cycleLength)->values();
+
+        if ($rewards->isEmpty()) {
+            return 0;
+        }
+
         $fullCycles = intdiv($pr, max(1, $cycleLength));
         $offset = $pr % max(1, $cycleLength);
 

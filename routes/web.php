@@ -15,7 +15,7 @@ Route::get('/', fn () => auth('web')->check()
 // Anggota
 Route::middleware('guest:web')->group(function () {
     Route::get('/masuk', [MemberLoginController::class, 'create'])->name('login');
-    Route::post('/masuk', [MemberLoginController::class, 'store'])->middleware('throttle:10,1,login-anggota')->name('login.store');
+    Route::post('/masuk', [MemberLoginController::class, 'store'])->middleware('throttle:30,1,login-anggota')->name('login.store');
 });
 Route::post('/keluar', [MemberLoginController::class, 'destroy'])->name('logout');
 
@@ -23,7 +23,11 @@ Route::middleware(['auth:web', 'active.member'])->group(function () {
     Route::get('/beranda', [MemberDashboardController::class, 'index'])->name('beranda');
 
     Route::get('/tukar', [PinRedemptionController::class, 'create'])->name('tukar');
-    Route::post('/tukar', [PinRedemptionController::class, 'store'])->middleware('throttle:10,1')->name('tukar.store');
+
+    // Batas 60/menit per IP, bukan 10: beberapa anggota bisa satu kantor dengan satu IP
+    // dan menukar PIN berdekatan. Percobaan menebak kode tetap tidak masuk akal
+    // (12 karakter acak), dan pembatasan per akun tetap ada di controller login.
+    Route::post('/tukar', [PinRedemptionController::class, 'store'])->middleware('throttle:60,1')->name('tukar.store');
 });
 
 // Admin
