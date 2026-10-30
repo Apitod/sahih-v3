@@ -36,8 +36,16 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        $path = getenv('HOME').'/.sahih-admin-credentials';
-        file_put_contents($path, "email: admin@sahih.local\npassword: {$password}\n");
+        // HOME bisa kosong di cron/container: tanpa cadangan, path jadi '/.sahih-...'
+        // dan password acak hilang setelah baris admin terlanjur dibuat.
+        $isi = "email: admin@sahih.local\npassword: {$password}\n";
+        $path = (getenv('HOME') ?: sys_get_temp_dir()).'/.sahih-admin-credentials';
+
+        if (@file_put_contents($path, $isi) === false) {
+            $path = sys_get_temp_dir().'/.sahih-admin-credentials';
+            file_put_contents($path, $isi);
+        }
+
         chmod($path, 0600);
         $this->command?->info("Kredensial admin ditulis ke {$path} (mode 600).");
     }

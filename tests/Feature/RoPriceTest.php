@@ -88,12 +88,12 @@ it('menerima PIN RO 1 poin dengan harga Rp 500.000', function () {
 });
 
 it('PIN upgrade dan registrasi tidak terpengaruh aturan harga RO', function () {
-    // PIN registrasi dengan harga bebas (misal 2 poin, 600.000)
+    // PIN registrasi paket 3 poin: harga wajib 600.000 x 3 (BUSINESS_RULES.md §2).
     $this->actingAs($this->admin, 'admin')
         ->post('/admin/pin', [
             'type' => 'registration',
-            'points' => 2,
-            'price' => 600000,
+            'points' => 3,
+            'price' => 1800000,
             'quantity' => 1,
         ])
         ->assertRedirect('/admin/pin');

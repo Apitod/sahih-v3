@@ -69,6 +69,32 @@ class PinController extends Controller
             }
         }
 
+        // PIN registrasi hanya untuk paket yang ada di BUSINESS_RULES.md §2.
+        // Paket lain tidak punya peringkat, jadi PIN-nya mustahil dipakai.
+        if ($data['type'] === 'registration') {
+            $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
+
+            if (! in_array((int) $data['points'], $paket, true)) {
+                return back()->withInput()->withErrors([
+                    'points' => 'PIN registrasi hanya untuk paket '.implode(', ', $paket).' poin.',
+                ]);
+            }
+
+            $expectedPrice = (int) $data['points'] * (int) config('sahih.registration_price_per_point');
+            if ((int) $data['price'] !== $expectedPrice) {
+                return back()->withInput()->withErrors([
+                    'price' => "PIN registrasi {$data['points']} poin harus Rp ".number_format($expectedPrice, 0, ',', '.').'.',
+                ]);
+            }
+        }
+
+        // Reseller adalah peringkat awal; tidak ada anggota yang bisa naik ke situ (#55).
+        if ($data['type'] === 'upgrade' && ($data['target_rank'] ?? null) === 'reseller') {
+            return back()->withInput()->withErrors([
+                'target_rank' => 'PIN upgrade tidak bisa ke Reseller — Reseller adalah peringkat awal.',
+            ]);
+        }
+
         $member = null;
         if (! empty($data['username'])) {
             $member = Member::where('username', $data['username'])->first();

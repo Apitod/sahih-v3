@@ -24,8 +24,10 @@ class PinRedemptionController extends Controller
         $member = Auth::guard('web')->user();
 
         return view('tukar', [
+            // PIN registrasi ditolak di halaman ini, jadi tidak perlu ditampilkan.
             'pinSaya' => Pin::where('assigned_member_id', $member->id)
                 ->where('status', 'issued')
+                ->where('type', '!=', 'registration')
                 ->orderBy('type')
                 ->get(),
             'riwayat' => Transaction::where('member_id', $member->id)
@@ -75,7 +77,12 @@ class PinRedemptionController extends Controller
         try {
             $trx = $this->poster->post($member, $pin->id, $pin->type === 'upgrade' ? 'upgrade' : 'ro');
         } catch (\RuntimeException $e) {
-            return back()->withErrors(['code' => $e->getMessage()]);
+            // Jangan teruskan pesan mentah (mis. "status: used") ke anggota.
+            report($e);
+
+            return back()->withInput()->withErrors([
+                'code' => 'PIN tidak bisa dipakai sekarang. Hubungi admin kalau menurut Anda ini keliru.',
+            ]);
         }
 
         $pesan = $pin->type === 'upgrade'

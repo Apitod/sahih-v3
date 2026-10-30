@@ -68,7 +68,7 @@
     @if ($pins->isEmpty())
         <p class="mt-6 text-sm text-tinta/60">Belum ada PIN yang cocok.</p>
     @else
-        <div class="mt-4 overflow-hidden rounded-kartu border border-garis bg-kertas">
+        <div class="mt-4 overflow-x-auto rounded-kartu border border-garis bg-kertas">
             <table class="w-full text-sm">
                 <thead class="border-b border-garis bg-krem/60 text-left text-xs uppercase tracking-wide text-tinta/60">
                     <tr>

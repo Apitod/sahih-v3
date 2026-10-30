@@ -56,7 +56,7 @@
         @if ($riwayat->isEmpty())
             <p class="mt-2 text-sm text-tinta/60">Belum ada transaksi.</p>
         @else
-            <div class="mt-3 overflow-hidden rounded-kartu border border-garis bg-kertas">
+            <div class="mt-3 overflow-x-auto rounded-kartu border border-garis bg-kertas">
                 <table class="w-full text-sm">
                     <thead class="border-b border-garis bg-krem/60 text-left text-xs uppercase tracking-wide text-tinta/60">
                         <tr>

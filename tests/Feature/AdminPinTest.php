@@ -141,9 +141,12 @@ it('admin melihat daftar PIN beserta kodenya', function () {
     kirimPin();
     $pin = Pin::first();
 
+    // 'belum dipakai' juga muncul di <option> filter, jadi bukan bukti tabel terisi.
+    // Yang hanya ada di baris tabel: harga terformat dan tombol Batalkan.
     $this->actingAs(adminUji(), 'admin')
         ->get('/admin/pin')
         ->assertOk()
         ->assertSee($pin->code)
-        ->assertSee('belum dipakai');
+        ->assertSee('Rp 600.000')
+        ->assertSee('Batalkan');
 });

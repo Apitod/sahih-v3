@@ -29,4 +29,7 @@ return [
 
     // Harga PIN repeat order (RO) per poin mengikat (DECISIONS #56).
     'ro_price_per_point' => 500000,
+
+    // Harga poin paket pendaftaran (BUSINESS_RULES.md §1–§2): 1 poin Rp 600.000.
+    'registration_price_per_point' => 600000,
 ];

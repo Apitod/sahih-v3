@@ -72,6 +72,12 @@ class TransactionPoster
                 }
             }
 
+            // Satu anggota hanya boleh punya satu transaksi join. PIN registrasi kedua
+            // akan menggandakan poin pribadi dan PA sponsor untuk orang yang sama.
+            if ($type === 'join' && Transaction::where('member_id', $buyer->id)->where('type', 'join')->exists()) {
+                throw new \RuntimeException('Akun ini sudah terdaftar. PIN registrasi hanya bisa dipakai sekali per anggota.');
+            }
+
             $now = now();
 
             $trx = Transaction::create([
@@ -152,6 +158,12 @@ class TransactionPoster
             }
 
             $trx->update(['sponsor_bonus_total' => $total]);
+
+            // Hadiah milestone dinilai dari total PR (BUSINESS_RULES.md §8), dan PR
+            // termasuk RO pribadi (§7). Pembeli menilai tangganya sendiri, sponsor
+            // menilai poin yang baru masuk. Klaim idempoten lewat unique index, jadi
+            // pemanggilan untuk orang yang sama tidak menghasilkan klaim dobel.
+            $this->milestones->evaluate($buyer->fresh());
 
             if ($sponsor !== null) {
                 $this->milestones->evaluate($sponsor->fresh());
