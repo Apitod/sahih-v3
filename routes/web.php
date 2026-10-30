@@ -17,7 +17,7 @@ Route::get('/masuk', [MemberLoginController::class, 'create'])->name('login');
 Route::post('/masuk', [MemberLoginController::class, 'store'])->middleware('throttle:10,1')->name('login.store');
 Route::post('/keluar', [MemberLoginController::class, 'destroy'])->name('logout');
 
-Route::middleware('auth:web')->group(function () {
+Route::middleware(['auth:web', 'active.member'])->group(function () {
     Route::get('/beranda', [MemberDashboardController::class, 'index'])->name('beranda');
 
     Route::get('/tukar', [PinRedemptionController::class, 'create'])->name('tukar');

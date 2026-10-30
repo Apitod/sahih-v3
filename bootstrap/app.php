@@ -16,7 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ? route('admin.login')
             : route('login'));
 
-        //
+        $middleware->alias([
+            'active.member' => \App\Http\Middleware\EnsureActiveMember::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

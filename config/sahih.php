@@ -8,7 +8,7 @@ return [
         'reseller'    => 1500,
         'agent'       => 1800,
         'distributor' => 2000,
-        'manager'     => 2000,
+        'manager'     => 2000, // DECISIONS #53: tarif bonus sponsor Manager = 20%.
     ],
 
     // Batas total bonus sponsor per transaksi: 20%.

@@ -33,6 +33,12 @@ class TransactionPoster
         }
 
         return DB::transaction(function () use ($buyer, $pinId, $type, $adminId) {
+            $buyer = Member::whereKey($buyer->id)->lockForUpdate()->firstOrFail();
+
+            if ($buyer->status !== 'active') {
+                throw new \RuntimeException('Akun ini sedang dibekukan. Hubungi admin.');
+            }
+
             // Kunci baris PIN: dua permintaan bersamaan tidak bisa memakai PIN yang sama.
             $pin = Pin::whereKey($pinId)->lockForUpdate()->firstOrFail();
 
@@ -185,6 +191,16 @@ class TransactionPoster
     /** Manager otomatis: sudah Distributor + 20 poin PA (DECISIONS #49). */
     private function promoteIfQualified(Member $member, Transaction $trx): void
     {
+        if ($member->rank === 'manager') {
+            if (! $member->is_manager || $member->manager_since === null) {
+                $member->is_manager = true;
+                $member->manager_since ??= now();
+                $member->save();
+            }
+
+            return;
+        }
+
         if ($member->is_manager || $member->rank !== 'distributor') {
             return;
         }

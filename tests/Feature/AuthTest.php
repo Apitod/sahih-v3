@@ -39,6 +39,26 @@ it('anggota yang dibekukan tidak bisa masuk', function () {
     $this->assertGuest('web');
 });
 
+it('anggota yang dibekukan dengan sesi aktif ditolak dari rute tukar dan beranda', function () {
+    $member = member('reseller', null, ['status' => 'suspended']);
+    $pin = pin('ro', 1, 600000);
+
+    $this->actingAs($member, 'web')
+        ->get('/beranda')
+        ->assertForbidden();
+
+    $this->actingAs($member, 'web')
+        ->get('/tukar')
+        ->assertForbidden();
+
+    $this->actingAs($member, 'web')
+        ->post('/tukar', ['code' => $pin->code])
+        ->assertForbidden();
+
+    expect($pin->fresh()->status)->toBe('issued')
+        ->and(\App\Models\Transaction::count())->toBe(0);
+});
+
 it('beranda menampilkan poin dari ledger, bukan dari kolom cache', function () {
     $member = member('reseller');
 

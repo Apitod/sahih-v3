@@ -20,6 +20,28 @@ function seedMilestones(): void
     }
 }
 
+it('service menolak anggota dibekukan tanpa memakai PIN atau membuat transaksi', function () {
+    $buyer = member('reseller', null, ['status' => 'suspended']);
+    $pin = pin('ro', 1, 600000);
+
+    expect(fn () => app(TransactionPoster::class)->post($buyer, $pin->id, 'ro'))
+        ->toThrow(RuntimeException::class);
+
+    expect($pin->fresh()->status)->toBe('issued')
+        ->and(Transaction::count())->toBe(0);
+});
+
+it('upgrade langsung ke Manager melengkapi penanda Manager', function () {
+    $buyer = member('distributor');
+    $pin = pin('upgrade', 0, 3000000, 'manager');
+
+    app(TransactionPoster::class)->post($buyer, $pin->id, 'upgrade');
+
+    expect($buyer->fresh()->rank)->toBe('manager')
+        ->and($buyer->fresh()->is_manager)->toBeTrue()
+        ->and($buyer->fresh()->manager_since)->not->toBeNull();
+});
+
 it('menolak PIN yang sama dipakai dua kali', function () {
     $buyer = member('reseller');
     $pin = pin('registration', 1, 600000);
