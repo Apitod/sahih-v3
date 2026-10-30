@@ -3,6 +3,7 @@
 @section('judul', 'Admin — Smart Store Sahih')
 
 @section('nav')
+    <a href="{{ route('admin.pin.index') }}" class="text-tinta/70 hover:underline">PIN</a>
     <span class="text-tinta/70">{{ auth('admin')->user()->name }}</span>
     <form method="POST" action="{{ route('admin.logout') }}">
         @csrf
@@ -12,7 +13,7 @@
 
 @section('isi')
     <h1 class="font-display text-2xl">Ringkasan</h1>
-    <p class="mt-1 text-sm text-tinta/70">Pantauan awal. Pengelolaan PIN dan klaim hadiah menyusul.</p>
+    <p class="mt-1 text-sm text-tinta/70">Pantauan awal. <a href="{{ route('admin.pin.index') }}" class="underline">Kelola PIN</a> sudah bisa dipakai.</p>
 
     <div class="mt-6 grid gap-3 sm:grid-cols-3">
         <div class="rounded-kartu border border-garis bg-kertas p-4">
