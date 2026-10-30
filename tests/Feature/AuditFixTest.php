@@ -108,3 +108,24 @@ it('PIN registrasi yang dititipkan tidak tampil di halaman tukar', function () {
         ->assertOk()
         ->assertDontSee($registrasi->code);
 });
+
+it('PIN upgrade yang harganya tidak cocok dengan peringkat pembeli ditolak (DECISIONS #59)', function () {
+    // PIN dibuat untuk Reseller -> Agent (Rp 1.200.000), tapi pemakainya sudah Agent.
+    $anggota = member('agent');
+    $pin = pin('upgrade', 0, 1200000, 'agent');
+
+    expect(fn () => app(TransactionPoster::class)->post($anggota, $pin->id, 'upgrade'))
+        ->toThrow(RuntimeException::class);
+
+    expect($anggota->fresh()->rank)->toBe('agent')
+        ->and($pin->fresh()->status)->toBe('issued')
+        ->and(Transaction::count())->toBe(0);
+});
+
+it('harga PIN upgrade mengikuti selisih paket untuk tiap jalur', function () {
+    $harga = app(\App\Services\PackagePrice::class);
+
+    expect($harga->upgradePrice('reseller', 'agent'))->toBe(1200000)
+        ->and($harga->upgradePrice('reseller', 'distributor'))->toBe(3000000)
+        ->and($harga->upgradePrice('agent', 'distributor'))->toBe(1800000);
+});

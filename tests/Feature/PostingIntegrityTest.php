@@ -31,15 +31,17 @@ it('service menolak anggota dibekukan tanpa memakai PIN atau membuat transaksi',
         ->and(Transaction::count())->toBe(0);
 });
 
-it('upgrade langsung ke Manager melengkapi penanda Manager', function () {
+it('PIN upgrade ke Manager ditolak — Manager otomatis, bukan dibeli (DECISIONS #58)', function () {
     $buyer = member('distributor');
-    $pin = pin('upgrade', 0, 3000000, 'manager');
+    $pin = pin('upgrade', 0, 0, 'manager');
 
-    app(TransactionPoster::class)->post($buyer, $pin->id, 'upgrade');
+    expect(fn () => app(TransactionPoster::class)->post($buyer, $pin->id, 'upgrade'))
+        ->toThrow(RuntimeException::class, 'Manager tidak bisa dibeli lewat PIN upgrade');
 
-    expect($buyer->fresh()->rank)->toBe('manager')
-        ->and($buyer->fresh()->is_manager)->toBeTrue()
-        ->and($buyer->fresh()->manager_since)->not->toBeNull();
+    expect($buyer->fresh()->rank)->toBe('distributor')
+        ->and($buyer->fresh()->is_manager)->toBeFalse()
+        ->and(Transaction::count())->toBe(0)
+        ->and($pin->fresh()->status)->toBe('issued');
 });
 
 it('menolak PIN yang sama dipakai dua kali', function () {

@@ -61,9 +61,53 @@ it('PIN upgrade wajib menyebut peringkat tujuan', function () {
 });
 
 it('PIN upgrade menyimpan peringkat tujuan', function () {
-    kirimPin(['type' => 'upgrade', 'target_rank' => 'distributor', 'points' => 0, 'price' => 3000000]);
+    $anggota = member('reseller');
+
+    // Reseller -> Distributor = Rp 3.000.000 - Rp 600.000 (DECISIONS #59).
+    kirimPin([
+        'type' => 'upgrade',
+        'target_rank' => 'distributor',
+        'points' => 0,
+        'price' => 3000000,
+        'username' => $anggota->username,
+    ])->assertRedirect('/admin/pin');
 
     expect(Pin::first()->target_rank)->toBe('distributor');
+});
+
+it('PIN upgrade ke Manager ditolak saat dibuat (DECISIONS #58)', function () {
+    $anggota = member('distributor');
+
+    kirimPin([
+        'type' => 'upgrade',
+        'target_rank' => 'manager',
+        'points' => 0,
+        'price' => 0,
+        'username' => $anggota->username,
+    ])->assertSessionHasErrors('target_rank');
+
+    expect(Pin::count())->toBe(0);
+});
+
+it('PIN upgrade tanpa pemegang ditolak karena harganya tidak bisa dihitung', function () {
+    kirimPin(['type' => 'upgrade', 'target_rank' => 'agent', 'points' => 0, 'price' => 1200000])
+        ->assertSessionHasErrors('username');
+
+    expect(Pin::count())->toBe(0);
+});
+
+it('PIN upgrade dengan harga bukan selisih paket ditolak', function () {
+    $anggota = member('reseller');
+
+    kirimPin([
+        'type' => 'upgrade',
+        'target_rank' => 'agent',
+        'points' => 0,
+        'price' => 1800000,
+        'username' => $anggota->username,
+    ])->assertSessionHasErrors('price');
+
+    expect(Pin::count())->toBe(0);
 });
 
 it('PIN registrasi tidak menyimpan peringkat tujuan', function () {

@@ -24,6 +24,7 @@ class TransactionPoster
         private CommissionCalculator $commission,
         private RankResolver $ranks,
         private MilestoneEvaluator $milestones,
+        private PackagePrice $packagePrice,
     ) {}
 
     public function post(Member $buyer, int $pinId, string $type, ?int $adminId = null): Transaction
@@ -67,8 +68,22 @@ class TransactionPoster
                     throw new \RuntimeException("PIN {$pin->code} tidak punya peringkat tujuan — tidak bisa dipakai untuk upgrade.");
                 }
 
+                // Manager tidak dijual (DECISIONS #58): peringkat ini otomatis setelah Distributor + 20 poin PA.
+                if ($pin->target_rank === 'manager') {
+                    throw new \RuntimeException('Manager tidak bisa dibeli lewat PIN upgrade — Manager otomatis setelah Distributor + 20 poin PA.');
+                }
+
                 if ($this->ranks->weight($pin->target_rank) <= $this->ranks->weight($buyer->rank)) {
                     throw new \RuntimeException("PIN upgrade ke peringkat {$pin->target_rank} ditolak untuk akun yang sudah {$buyer->rank}.");
+                }
+
+                // Harga PIN upgrade = harga paket tujuan − harga paket sekarang (DECISIONS #59).
+                // Diperiksa lagi di sini supaya PIN yang terbit sebelum peringkat pembeli
+                // berubah tidak dipakai dengan harga lama.
+                $expectedPrice = $this->packagePrice->upgradePrice($buyer->rank, $pin->target_rank);
+
+                if ((int) $pin->price !== $expectedPrice) {
+                    throw new \RuntimeException("Harga PIN {$pin->code} tidak sesuai untuk upgrade {$buyer->rank} ke {$pin->target_rank}.");
                 }
             }
 

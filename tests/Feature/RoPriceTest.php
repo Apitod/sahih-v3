@@ -18,7 +18,10 @@ it('formulir buat PIN menampilkan petunjuk harga RO', function () {
     $this->actingAs($this->admin, 'admin')
         ->get(route('admin.pin.create'))
         ->assertOk()
-        ->assertSee('Khusus PIN RO: wajib Rp 500.000');
+        ->assertSee('PIN RO: Rp 500.000')
+        // Manager tidak dijual lewat PIN (DECISIONS #58).
+        ->assertSee('Manager tidak dijual lewat PIN')
+        ->assertDontSee('<option value="manager"', false);
 });
 
 it('menerima PIN RO 2 poin dengan harga Rp 1.000.000', function () {
@@ -98,7 +101,8 @@ it('PIN upgrade dan registrasi tidak terpengaruh aturan harga RO', function () {
         ])
         ->assertRedirect('/admin/pin');
 
-    // PIN upgrade dengan harga bebas (misal 0 poin, 3.000.000)
+    // PIN upgrade: harga wajib selisih paket (DECISIONS #59), bukan harga RO.
+    $anggota = member('reseller');
     $this->actingAs($this->admin, 'admin')
         ->post('/admin/pin', [
             'type' => 'upgrade',
@@ -106,6 +110,7 @@ it('PIN upgrade dan registrasi tidak terpengaruh aturan harga RO', function () {
             'price' => 3000000,
             'target_rank' => 'distributor',
             'quantity' => 1,
+            'username' => $anggota->username,
         ])
         ->assertRedirect('/admin/pin');
 

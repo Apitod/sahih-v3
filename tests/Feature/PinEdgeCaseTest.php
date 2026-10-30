@@ -54,7 +54,8 @@ it('anggota kedua ditolak setelah anggota pertama memakai PIN yang sama', functi
 // === Kasus 4: PIN upgrade tepat satu tingkat di atas ===
 it('PIN upgrade dari reseller ke agent berhasil naik satu tingkat', function () {
     $anggota = member('reseller');
-    $kode = pin('upgrade', 0, 1800000, 'agent');
+    // Reseller -> Agent = Rp 1.800.000 - Rp 600.000 (DECISIONS #59).
+    $kode = pin('upgrade', 0, 1200000, 'agent');
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
@@ -122,7 +123,8 @@ it('upline peringkat lebih rendah dari sponsor langsung dapat 0, selisih naik ke
     $sponsor = member('agent', $mid);
     $pembeli = member('reseller', $sponsor);
     // Pakai PIN upgrade (bukan RO) agar bonus sponsor tetap jalan.
-    $kode = pin('upgrade', 1, 600000, 'agent');
+    // Reseller -> Agent = Rp 1.200.000 (DECISIONS #59), jadi bonus dihitung dari angka itu.
+    $kode = pin('upgrade', 1, 1200000, 'agent');
 
     $this->actingAs($pembeli, 'web')->post('/tukar', ['code' => $kode->code]);
 
@@ -133,16 +135,16 @@ it('upline peringkat lebih rendah dari sponsor langsung dapat 0, selisih naik ke
     // Hanya 2 baris bonus yang tersimpan:
     expect($bonuses)->toHaveCount(2);
 
-    // Level 1: agent 18% = Rp108.000
+    // Level 1: agent 18% = Rp216.000
     expect($bonuses[0]->member_id)->toBe($sponsor->id)
-        ->and($bonuses[0]->amount)->toBe(108000)
+        ->and($bonuses[0]->amount)->toBe(216000)
         ->and($bonuses[0]->percent_bp)->toBe(1800);
 
-    // Level 3: manager 20%, selisih dari 18% = 2% → Rp12.000
+    // Level 3: manager 20%, selisih dari 18% = 2% → Rp24.000
     expect($bonuses[1]->member_id)->toBe($top->id)
-        ->and($bonuses[1]->amount)->toBe(12000)
+        ->and($bonuses[1]->amount)->toBe(24000)
         ->and($bonuses[1]->percent_bp)->toBe(200);
 
-    // Total harus 108.000 + 12.000 = 120.000 (20% dari 600.000)
-    expect($trx->sponsor_bonus_total)->toBe(120000);
+    // Total harus 216.000 + 24.000 = 240.000 (20% dari 1.200.000)
+    expect($trx->sponsor_bonus_total)->toBe(240000);
 });

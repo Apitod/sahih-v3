@@ -203,7 +203,8 @@ it('pembeli mendapat PR dari PIN join tanpa PA pribadi', function () {
 
 it('pembeli mendapat PR dari PIN upgrade tanpa PA pribadi', function () {
     $anggota = member('reseller');
-    $kode = pin('upgrade', 3, 1800000, 'agent');
+    // Reseller -> Agent = Rp 1.200.000 (DECISIONS #59).
+    $kode = pin('upgrade', 3, 1200000, 'agent');
 
     app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'upgrade');
 

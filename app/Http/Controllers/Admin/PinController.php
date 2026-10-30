@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Member;
 use App\Models\Pin;
+use App\Services\PackagePrice;
+use App\Services\RankResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,7 +45,8 @@ class PinController extends Controller
     public function create(): View
     {
         return view('admin.pin.create', [
-            'peringkat' => ['reseller' => 'Reseller', 'agent' => 'Agent', 'distributor' => 'Distributor', 'manager' => 'Manager'],
+            // Manager tidak dijual (DECISIONS #58) — muncul otomatis setelah Distributor + 20 poin PA.
+            'peringkat' => ['reseller' => 'Reseller', 'agent' => 'Agent', 'distributor' => 'Distributor'],
         ]);
     }
 
@@ -95,11 +98,47 @@ class PinController extends Controller
             ]);
         }
 
+        // Manager tidak dijual sebagai PIN: Manager otomatis begitu Distributor + 20 poin PA (#58).
+        if ($data['type'] === 'upgrade' && ($data['target_rank'] ?? null) === 'manager') {
+            return back()->withInput()->withErrors([
+                'target_rank' => 'Manager tidak dijual lewat PIN — Manager otomatis setelah Distributor + 20 poin PA.',
+            ]);
+        }
+
         $member = null;
         if (! empty($data['username'])) {
             $member = Member::where('username', $data['username'])->first();
             if ($member->status !== 'active') {
                 return back()->withInput()->withErrors(['username' => 'Anggota ini sedang dibekukan.']);
+            }
+        }
+
+        // Harga PIN upgrade = harga paket tujuan − harga paket sekarang (#59),
+        // jadi pemegangnya wajib diketahui saat PIN dibuat.
+        if ($data['type'] === 'upgrade') {
+            if ($member === null) {
+                return back()->withInput()->withErrors([
+                    'username' => 'PIN upgrade harus menyebut pemegangnya, supaya harga selisihnya bisa dihitung.',
+                ]);
+            }
+
+            $ranks = app(RankResolver::class);
+            $target = (string) $data['target_rank'];
+
+            if ($ranks->weight($target) <= $ranks->weight($member->rank)) {
+                return back()->withInput()->withErrors([
+                    'target_rank' => "Anggota ini sudah {$member->rank}. PIN upgrade harus ke peringkat di atasnya.",
+                ]);
+            }
+
+            $harga = app(PackagePrice::class);
+            $expectedPrice = $harga->upgradePrice($member->rank, $target);
+
+            if ((int) $data['price'] !== $expectedPrice) {
+                return back()->withInput()->withErrors([
+                    'price' => 'PIN upgrade '.$member->rank.' → '.$target.' harus Rp '
+                        .number_format($expectedPrice, 0, ',', '.').' (harga paket '.$target.' dikurangi paket '.$member->rank.').',
+                ]);
             }
         }
 

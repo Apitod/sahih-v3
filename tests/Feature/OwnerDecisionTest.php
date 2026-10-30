@@ -18,8 +18,9 @@ it('Manager mengajak 1 poin mendapat bonus sponsor 20 persen atau Rp 120.000', f
 
 it('PIN upgrade 3 poin membayar bonus Distributor 20 persen atau Rp 360.000', function () {
     $upline = member('distributor');
-    $anggota = member('reseller', $upline);
-    $kode = pin('upgrade', 3, 1800000, 'agent');
+    // Agent -> Distributor = Rp 1.800.000 (DECISIONS #59), jadi 20% = Rp 360.000.
+    $anggota = member('agent', $upline);
+    $kode = pin('upgrade', 3, 1800000, 'distributor');
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])

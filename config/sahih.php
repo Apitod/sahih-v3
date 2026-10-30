@@ -32,4 +32,13 @@ return [
 
     // Harga poin paket pendaftaran (BUSINESS_RULES.md §1–§2): 1 poin Rp 600.000.
     'registration_price_per_point' => 600000,
+
+    // Poin paket per peringkat. Dipakai menghitung harga PIN upgrade (DECISIONS #59).
+    // Manager memakai paket Distributor: Manager bukan paket, tapi syarat otomatis (#58).
+    'points_by_rank' => [
+        'reseller' => 1,
+        'agent' => 3,
+        'distributor' => 6,
+        'manager' => 6,
+    ],
 ];
