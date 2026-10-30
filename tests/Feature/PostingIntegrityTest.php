@@ -199,7 +199,37 @@ it('upgrade tidak menurunkan peringkat yang sudah lebih tinggi', function () {
     $member = member('manager');
     $pin = pin('upgrade', 2, 1800000, 'distributor');
 
-    app(TransactionPoster::class)->post($member, $pin->id, 'upgrade');
+    expect(fn () => app(TransactionPoster::class)->post($member, $pin->id, 'upgrade'))
+        ->toThrow(RuntimeException::class);
 
-    expect($member->fresh()->rank)->toBe('manager');
+    expect($member->fresh()->rank)->toBe('manager')
+        ->and(Transaction::count())->toBe(0)
+        ->and(BonusEntry::count())->toBe(0)
+        ->and($pin->fresh()->status)->toBe('issued');
+});
+
+it('post() menolak PIN milik orang lain tanpa membuat transaksi atau bonus', function () {
+    $owner = member('reseller');
+    $buyer = member('reseller');
+    $pin = pin('ro', 1, 600000);
+    $pin->update(['assigned_member_id' => $owner->id]);
+
+    expect(fn () => app(TransactionPoster::class)->post($buyer, $pin->id, 'ro'))
+        ->toThrow(RuntimeException::class);
+
+    expect(Transaction::count())->toBe(0)
+        ->and(BonusEntry::count())->toBe(0)
+        ->and($pin->fresh()->status)->toBe('issued');
+});
+
+it('post() menolak PIN registrasi yang dipakai sebagai ro tanpa membuat transaksi atau bonus', function () {
+    $buyer = member('reseller');
+    $pin = pin('registration', 1, 600000);
+
+    expect(fn () => app(TransactionPoster::class)->post($buyer, $pin->id, 'ro'))
+        ->toThrow(RuntimeException::class);
+
+    expect(Transaction::count())->toBe(0)
+        ->and(BonusEntry::count())->toBe(0)
+        ->and($pin->fresh()->status)->toBe('issued');
 });

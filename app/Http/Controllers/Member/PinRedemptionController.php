@@ -50,20 +50,8 @@ class PinRedemptionController extends Controller
 
         $pin = Pin::where('code', $kode)->first();
 
-        if ($pin === null) {
+        if ($pin === null || ! $pin->isUsable() || ($pin->assigned_member_id !== null && $pin->assigned_member_id !== $member->id)) {
             return back()->withInput()->withErrors(['code' => 'Kode PIN tidak dikenal. Periksa lagi hurufnya.']);
-        }
-
-        if ($pin->status === 'used') {
-            return back()->withErrors(['code' => 'PIN ini sudah dipakai.']);
-        }
-
-        if ($pin->status !== 'issued') {
-            return back()->withErrors(['code' => 'PIN ini sudah dibatalkan admin.']);
-        }
-
-        if ($pin->assigned_member_id !== null && $pin->assigned_member_id !== $member->id) {
-            return back()->withErrors(['code' => 'PIN ini bukan untuk akun Anda.']);
         }
 
         if ($pin->type === 'registration') {

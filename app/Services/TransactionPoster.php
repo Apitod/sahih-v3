@@ -46,6 +46,32 @@ class TransactionPoster
                 throw new \RuntimeException("PIN {$pin->code} tidak bisa dipakai (status: {$pin->status}).");
             }
 
+            // Penjaga kepemilikan: PIN harus milik pembeli (kalau punya pemilik).
+            if ($pin->assigned_member_id !== null && $pin->assigned_member_id !== $buyer->id) {
+                throw new \RuntimeException("PIN {$pin->code} bukan untuk akun ini.");
+            }
+
+            // Penjaga jenis: jenis PIN harus cocok dengan jenis transaksi.
+            $expectedTypes = [
+                'registration' => 'join',
+                'upgrade' => 'upgrade',
+                'ro' => 'ro',
+            ];
+            if (($expectedTypes[$pin->type] ?? null) !== $type) {
+                throw new \RuntimeException("Jenis PIN {$pin->type} tidak cocok untuk transaksi {$type}.");
+            }
+
+            // Penjaga arah peringkat: upgrade tidak boleh ke peringkat sama atau lebih rendah (keputusan #55).
+            if ($type === 'upgrade') {
+                if ($pin->target_rank === null) {
+                    throw new \RuntimeException("PIN {$pin->code} tidak punya peringkat tujuan — tidak bisa dipakai untuk upgrade.");
+                }
+
+                if ($this->ranks->weight($pin->target_rank) <= $this->ranks->weight($buyer->rank)) {
+                    throw new \RuntimeException("PIN upgrade ke peringkat {$pin->target_rank} ditolak untuk akun yang sudah {$buyer->rank}.");
+                }
+            }
+
             $now = now();
 
             $trx = Transaction::create([

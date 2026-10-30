@@ -123,6 +123,31 @@ it('kode yang tidak dikenal ditolak dengan pesan jelas', function () {
         ->assertSessionHasErrors(['code' => 'Kode PIN tidak dikenal. Periksa lagi hurufnya.']);
 });
 
+it('pesan galat seragam untuk PIN tidak ada, sudah dipakai, dan milik orang lain (F4)', function () {
+    $pesan = 'Kode PIN tidak dikenal. Periksa lagi hurufnya.';
+    $anggota = member('reseller');
+    $lain = member('reseller');
+
+    // 1. Tidak ada
+    $this->actingAs($anggota, 'web')
+        ->post('/tukar', ['code' => 'TIDAKADAPIN123'])
+        ->assertSessionHasErrors(['code' => $pesan]);
+
+    // 2. Sudah dipakai
+    $usedPin = pin('ro', 1, 600000);
+    $usedPin->update(['status' => 'used']);
+    $this->actingAs($anggota, 'web')
+        ->post('/tukar', ['code' => $usedPin->code])
+        ->assertSessionHasErrors(['code' => $pesan]);
+
+    // 3. Milik orang lain
+    $otherPin = pin('ro', 1, 600000);
+    $otherPin->update(['assigned_member_id' => $lain->id]);
+    $this->actingAs($anggota, 'web')
+        ->post('/tukar', ['code' => $otherPin->code])
+        ->assertSessionHasErrors(['code' => $pesan]);
+});
+
 it('kode kosong ditolak', function () {
     $anggota = member('reseller');
 
