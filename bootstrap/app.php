@@ -16,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
             ? route('admin.login')
             : route('login'));
 
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'active.member' => \App\Http\Middleware\EnsureActiveMember::class,
         ]);

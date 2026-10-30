@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -23,11 +25,25 @@ class MemberLoginController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $throttleKey = 'login-anggota:'.Str::transliterate(Str::lower($data['username'])).'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            abort(429, 'Terlalu banyak percobaan login.', [
+                'Retry-After' => $seconds,
+                'X-RateLimit-Reset' => now()->addSeconds($seconds)->getTimestamp(),
+            ]);
+        }
+
         if (! Auth::guard('web')->attempt($data, $request->boolean('remember'))) {
+            RateLimiter::hit($throttleKey, 60);
+
             throw ValidationException::withMessages([
                 'username' => 'Username atau password salah.',
             ]);
         }
+
+        RateLimiter::clear($throttleKey);
 
         $member = Auth::guard('web')->user();
 
@@ -48,7 +64,10 @@ class MemberLoginController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('web')->logout();
+        foreach (array_keys(config('auth.guards', [])) as $guard) {
+            Auth::guard($guard)->logout();
+        }
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

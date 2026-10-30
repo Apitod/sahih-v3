@@ -14,7 +14,7 @@ Route::get('/', fn () => auth('web')->check()
 
 // Anggota
 Route::get('/masuk', [MemberLoginController::class, 'create'])->name('login');
-Route::post('/masuk', [MemberLoginController::class, 'store'])->middleware('throttle:10,1')->name('login.store');
+Route::post('/masuk', [MemberLoginController::class, 'store'])->middleware('throttle:10,1,login-anggota')->name('login.store');
 Route::post('/keluar', [MemberLoginController::class, 'destroy'])->name('logout');
 
 Route::middleware(['auth:web', 'active.member'])->group(function () {
@@ -26,7 +26,7 @@ Route::middleware(['auth:web', 'active.member'])->group(function () {
 
 // Admin
 Route::get('/admin/masuk', [AdminLoginController::class, 'create'])->name('admin.login');
-Route::post('/admin/masuk', [AdminLoginController::class, 'store'])->middleware('throttle:10,1')->name('admin.login.store');
+Route::post('/admin/masuk', [AdminLoginController::class, 'store'])->middleware('throttle:10,1,login-admin')->name('admin.login.store');
 Route::post('/admin/keluar', [AdminLoginController::class, 'destroy'])->name('admin.logout');
 
 Route::middleware('auth:admin')->prefix('admin')->group(function () {
