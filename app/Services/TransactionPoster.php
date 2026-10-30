@@ -174,6 +174,10 @@ class TransactionPoster
 
             $trx->update(['sponsor_bonus_total' => $total]);
 
+            // Poin leadership (BUSINESS_RULES.md §4, DECISIONS #62): sebesar poin
+            // transaksi, ke setiap upline sampai Manager pertama, lalu berhenti.
+            $this->awardLeadership($buyer, (int) $pin->points, $trx);
+
             // Hadiah milestone dinilai dari total PR (BUSINESS_RULES.md §8), dan PR
             // termasuk RO pribadi (§7). Pembeli menilai tangganya sendiri, sponsor
             // menilai poin yang baru masuk. Klaim idempoten lewat unique index, jadi
@@ -201,6 +205,45 @@ class TransactionPoster
 
             return $trx->fresh();
         });
+    }
+
+    /**
+     * Poin leadership (BUSINESS_RULES.md §4, DECISIONS #62).
+     *
+     * Sebesar poin transaksi, diberikan ke upline level 1, 2, 3, … sampai dan
+     * termasuk Manager pertama, lalu berhenti (kompresi). Kalau pembelinya sendiri
+     * sudah Manager, tidak ada yang dapat — hak dari struktur itu sudah tertutup.
+     */
+    private function awardLeadership(Member $buyer, int $points, Transaction $trx): void
+    {
+        if ($points <= 0 || $buyer->rank === 'manager') {
+            return;
+        }
+
+        $cursor = $buyer->sponsor;
+        $level = 0;
+
+        while ($cursor !== null && $level < 20) {
+            $level++;
+
+            PointEntry::create([
+                'member_id' => $cursor->id,
+                'kind' => 'pl',
+                'delta' => $points,
+                'source_type' => 'transaction',
+                'source_id' => $trx->id,
+                'note' => "Poin leadership level {$level} dari transaksi {$trx->code}",
+            ]);
+
+            $cursor->point_pl = (int) $cursor->point_pl + $points;
+            $cursor->save();
+
+            if ($cursor->rank === 'manager') {
+                break;   // Manager pertama: hak dari struktur ini berhenti di sini
+            }
+
+            $cursor = $cursor->sponsor;
+        }
     }
 
     private function addPoints(Member $member, array $kinds, int $points, Transaction $trx): void
