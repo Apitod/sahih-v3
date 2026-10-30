@@ -98,7 +98,7 @@ it('hadiah poin muncul saat ambang terlewati, dan tidak mengurangi poin', functi
         ->and(app(MilestoneEvaluator::class)->totalPr($sponsor))->toBe(20);
 });
 
-it('hadiah tidak berulang: tiap ambang hanya sekali (perilaku berulang belum diputuskan)', function () {
+it('hadiah terulang: 7.000 poin membuka putaran kedua penuh', function () {
     seedMilestones();
 
     $sponsor = member('distributor');
@@ -107,9 +107,9 @@ it('hadiah tidak berulang: tiap ambang hanya sekali (perilaku berulang belum dip
 
     app(TransactionPoster::class)->post($buyer, pin('registration', 1, 600000)->id, 'join');
 
-    // 7.000 poin: kelima ambang terlewati, masing-masing satu klaim.
-    expect(MilestoneClaim::where('member_id', $sponsor->id)->count())->toBe(5)
-        ->and(MilestoneClaim::where('member_id', $sponsor->id)->where('cycle', '>', 1)->count())->toBe(0);
+    // 7.000 poin = dua putaran penuh, lima ambang tiap putaran.
+    expect(MilestoneClaim::where('member_id', $sponsor->id)->count())->toBe(10)
+        ->and(MilestoneClaim::where('member_id', $sponsor->id)->where('cycle', 2)->count())->toBe(5);
 });
 
 it('saldo bonus hanya menghitung bonus yang sudah cair', function () {
@@ -124,4 +124,60 @@ it('saldo bonus hanya menghitung bonus yang sudah cair', function () {
     expect($available)->toBe(720000)
         ->and($available)->toBe($total)
         ->and($available)->toBeLessThanOrEqual(intdiv(3600000 * 2000, 10000));
+});
+
+it('hadiah terulang sebagian: 3.520 poin baru melewati ambang 5 dan 20 di putaran dua', function () {
+    seedMilestones();
+
+    $sponsor = member('distributor');
+    givePoints($sponsor, 'pr', 3519);
+    $buyer = member('reseller', $sponsor);
+
+    app(TransactionPoster::class)->post($buyer, pin('registration', 1, 600000)->id, 'join');
+
+    $cycleSatu = MilestoneClaim::where('member_id', $sponsor->id)->where('cycle', 1)->count();
+    $cycleDua = MilestoneClaim::where('member_id', $sponsor->id)->where('cycle', 2)->count();
+
+    expect($cycleSatu)->toBe(5)
+        ->and($cycleDua)->toBe(2)
+        ->and(MilestoneClaim::where('member_id', $sponsor->id)->count())->toBe(7);
+});
+
+it('upgrade Reseller ke Distributor memakai PIN Rp 3.000.000', function () {
+    $member = member('reseller');
+    $pin = pin('upgrade', 3, 3000000, 'distributor');
+
+    app(TransactionPoster::class)->post($member, $pin->id, 'upgrade');
+
+    expect($member->fresh()->rank)->toBe('distributor')
+        ->and(\App\Models\RankHistory::where('member_id', $member->id)->value('to_rank'))->toBe('distributor');
+});
+
+it('upgrade Agent ke Distributor memakai PIN Rp 1.800.000', function () {
+    $member = member('agent');
+    $pin = pin('upgrade', 2, 1800000, 'distributor');
+
+    app(TransactionPoster::class)->post($member, $pin->id, 'upgrade');
+
+    expect($member->fresh()->rank)->toBe('distributor');
+});
+
+it('PIN upgrade tanpa peringkat tujuan ditolak', function () {
+    $member = member('reseller');
+    $pin = pin('upgrade', 3, 3000000);
+
+    expect(fn () => app(TransactionPoster::class)->post($member, $pin->id, 'upgrade'))
+        ->toThrow(RuntimeException::class);
+
+    expect(Transaction::count())->toBe(0)
+        ->and($pin->fresh()->status)->toBe('issued');
+});
+
+it('upgrade tidak menurunkan peringkat yang sudah lebih tinggi', function () {
+    $member = member('manager');
+    $pin = pin('upgrade', 2, 1800000, 'distributor');
+
+    app(TransactionPoster::class)->post($member, $pin->id, 'upgrade');
+
+    expect($member->fresh()->rank)->toBe('manager');
 });

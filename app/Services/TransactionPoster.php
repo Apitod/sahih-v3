@@ -60,9 +60,16 @@ class TransactionPoster
                 'used_at' => $now,
             ]);
 
-            // Peringkat pembeli hanya ditentukan saat mendaftar.
+            // Peringkat pembeli: saat mendaftar dari poin, saat upgrade dari target PIN.
             if ($type === 'join') {
                 $this->applyRank($buyer, $this->ranks->forPoints($pin->points), $trx);
+            }
+
+            if ($type === 'upgrade') {
+                if ($pin->target_rank === null) {
+                    throw new \RuntimeException("PIN {$pin->code} tidak punya peringkat tujuan — tidak bisa dipakai untuk upgrade.");
+                }
+                $this->applyRank($buyer, $pin->target_rank, $trx);
             }
 
             // Poin untuk sponsor langsung: join = PA + PR, RO/upgrade = PR saja.

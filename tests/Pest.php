@@ -41,11 +41,12 @@ function givePoints(Member $member, string $kind, int $points): void
     $member->save();
 }
 
-function pin(string $type = 'registration', int $points = 1, int $price = 600000): Pin
+function pin(string $type = 'registration', int $points = 1, int $price = 600000, ?string $targetRank = null): Pin
 {
     return Pin::create([
         'code' => 'PIN'.Str::upper(Str::random(8)),
         'type' => $type,
+        'target_rank' => $targetRank,
         'points' => $points,
         'price' => $price,
         'status' => 'issued',

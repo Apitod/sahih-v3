@@ -8,12 +8,10 @@ use App\Models\MilestoneReward;
 use App\Models\PointEntry;
 
 /**
- * Hadiah poin bersifat kumulatif: setiap ambang yang terlewati jadi hak member.
+ * Hadiah poin bersifat kumulatif DAN berulang.
+ * Setiap ambang yang terlewati jadi hak member; setelah putaran penuh
+ * (setinggi ambang tertinggi, sekarang 3.500 poin) tabelnya terulang.
  * Poin TIDAK berkurang saat hadiah diklaim (BUSINESS_RULES.md §7).
- *
- * Kolom `cycle` disediakan untuk kemungkinan hadiah berulang, tapi untuk
- * sekarang selalu 1: apakah hadiah terulang setelah 3.500 poin belum
- * diputuskan Owner, jadi belum diimplementasikan (dicatat sebagai UNKNOWN).
  */
 class MilestoneEvaluator
 {
@@ -30,21 +28,37 @@ class MilestoneEvaluator
 
         $rewards = MilestoneReward::where('is_active', true)->orderBy('threshold')->get();
 
+        if ($rewards->isEmpty()) {
+            return 0;
+        }
+
+        // Panjang satu putaran = ambang tertinggi. Ikut berubah kalau Owner mengubah tabel hadiah.
+        $cycleLength = (int) $rewards->max('threshold');
+        $fullCycles = intdiv($pr, max(1, $cycleLength));
+        $offset = $pr % max(1, $cycleLength);
+
         foreach ($rewards as $reward) {
-            if ($pr < (int) $reward->threshold) {
-                continue;
+            $threshold = (int) $reward->threshold;
+
+            for ($cycle = 1; $cycle <= $fullCycles; $cycle++) {
+                if ($this->claim($member, $reward, $cycle)) {
+                    $created++;
+                }
             }
 
-            $claim = MilestoneClaim::firstOrCreate(
-                ['member_id' => $member->id, 'milestone_reward_id' => $reward->id, 'cycle' => 1],
-                ['status' => 'eligible'],
-            );
-
-            if ($claim->wasRecentlyCreated) {
+            if ($offset >= $threshold && $this->claim($member, $reward, $fullCycles + 1)) {
                 $created++;
             }
         }
 
         return $created;
+    }
+
+    private function claim(Member $member, MilestoneReward $reward, int $cycle): bool
+    {
+        return MilestoneClaim::firstOrCreate(
+            ['member_id' => $member->id, 'milestone_reward_id' => $reward->id, 'cycle' => $cycle],
+            ['status' => 'eligible'],
+        )->wasRecentlyCreated;
     }
 }
