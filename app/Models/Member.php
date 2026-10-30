@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Member extends Model
+class Member extends Authenticatable
 {
     protected $fillable = [
         'username', 'name', 'phone', 'address', 'password', 'sponsor_id',
@@ -17,6 +17,7 @@ class Member extends Model
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
+        'password' => 'hashed',
         'is_manager' => 'boolean',
         'manager_since' => 'datetime',
         'joined_at' => 'datetime',
@@ -29,6 +30,8 @@ class Member extends Model
     public function downlines(): HasMany { return $this->hasMany(self::class, 'sponsor_id'); }
     public function pointEntries(): HasMany { return $this->hasMany(PointEntry::class); }
     public function bonusEntries(): HasMany { return $this->hasMany(BonusEntry::class); }
+    public function milestoneClaims(): HasMany { return $this->hasMany(MilestoneClaim::class); }
+    public function rankHistories(): HasMany { return $this->hasMany(RankHistory::class); }
 
     /** Total poin dari ledger — sumber kebenaran, bukan kolom cache. */
     public function pointTotal(string $kind): int

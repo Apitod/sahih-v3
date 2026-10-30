@@ -8,7 +8,7 @@ class Admin extends Authenticatable
 {
     protected $fillable = ['name', 'email', 'password', 'role', 'is_active'];
     protected $hidden = ['password', 'remember_token'];
-    protected $casts = ['is_active' => 'boolean'];
+    protected $casts = ['is_active' => 'boolean', 'password' => 'hashed'];
 
     public function isSuperadmin(): bool { return $this->role === 'superadmin'; }
 }
