@@ -32,8 +32,13 @@ class MilestoneEvaluator
             return 0;
         }
 
-        // Panjang satu putaran = ambang tertinggi. Ikut berubah kalau Owner mengubah tabel hadiah.
-        $cycleLength = (int) $rewards->max('threshold');
+        // Panjang satu putaran DIKUNCI di config (DECISIONS #61), tidak mengikuti ambang
+        // tertinggi yang sedang aktif: mematikan satu hadiah tidak boleh mengubah
+        // hitungan hadiah anggota lain.
+        $cycleLength = (int) config('sahih.milestone_cycle_points', 3500);
+        if ($cycleLength < 1) {
+            $cycleLength = (int) $rewards->max('threshold');
+        }
         $fullCycles = intdiv($pr, max(1, $cycleLength));
         $offset = $pr % max(1, $cycleLength);
 

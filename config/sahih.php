@@ -41,4 +41,9 @@ return [
         'distributor' => 6,
         'manager' => 6,
     ],
+
+    // Panjang satu putaran hadiah milestone, dikunci di 3.500 poin (DECISIONS #61).
+    // Tidak mengikuti ambang tertinggi yang sedang aktif: mematikan hadiah 3.500
+    // tidak boleh mengubah hitungan hadiah anggota.
+    'milestone_cycle_points' => 3500,
 ];

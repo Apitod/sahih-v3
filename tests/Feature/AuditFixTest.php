@@ -129,3 +129,25 @@ it('harga PIN upgrade mengikuti selisih paket untuk tiap jalur', function () {
         ->and($harga->upgradePrice('reseller', 'distributor'))->toBe(3000000)
         ->and($harga->upgradePrice('agent', 'distributor'))->toBe(1800000);
 });
+
+it('putaran hadiah tetap 3.500 walau hadiah 3.500 dinonaktifkan (DECISIONS #61)', function () {
+    foreach ([5, 20, 75, 500, 3500] as $i => $threshold) {
+        MilestoneReward::create([
+            'threshold' => $threshold,
+            'name' => "Hadiah {$threshold} poin",
+            'is_active' => $threshold !== 3500,
+            'sort' => $i,
+        ]);
+    }
+
+    $anggota = member('distributor');
+    givePoints($anggota, 'pr', 4000);
+
+    app(\App\Services\MilestoneEvaluator::class)->evaluate($anggota);
+
+    // Satu putaran penuh (3.500) + sisa 500: 4 ambang aktif di putaran 1,
+    // 4 ambang aktif lagi di putaran 2. Kalau putaran ikut ambang tertinggi yang
+    // aktif (500), hasilnya akan 32 klaim.
+    expect(MilestoneClaim::where('member_id', $anggota->id)->count())->toBe(8)
+        ->and(MilestoneClaim::where('member_id', $anggota->id)->where('cycle', 2)->count())->toBe(4);
+});
