@@ -60,6 +60,15 @@ class PinController extends Controller
             'target_rank.required_if' => 'PIN upgrade harus menyebut peringkat tujuan.',
         ]);
 
+        if ($data['type'] === 'ro') {
+            $expectedPrice = (int) $data['points'] * (int) config('sahih.ro_price_per_point');
+            if ((int) $data['price'] !== $expectedPrice) {
+                return back()->withInput()->withErrors([
+                    'price' => "PIN RO {$data['points']} poin harus Rp ".number_format($expectedPrice, 0, ',', '.').'.',
+                ]);
+            }
+        }
+
         $member = null;
         if (! empty($data['username'])) {
             $member = Member::where('username', $data['username'])->first();

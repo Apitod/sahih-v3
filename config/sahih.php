@@ -26,4 +26,7 @@ return [
 
     // Minimum penarikan.
     'withdraw_min' => 100000,
+
+    // Harga PIN repeat order (RO) per poin mengikat (DECISIONS #56).
+    'ro_price_per_point' => 500000,
 ];
