@@ -136,7 +136,7 @@ it('tamu tidak bisa membuka halaman tukar PIN', function () {
     $this->post('/tukar', ['code' => 'APA']) ->assertRedirect('/masuk');
 });
 
-it('bonus sponsor tercatat saat PIN dipakai', function () {
+it('RO tidak membayar bonus sponsor', function () {
     $sponsor = member('distributor');
     $anggota = member('reseller', $sponsor);
     $kode = pin('ro', 3, 1800000);
@@ -144,7 +144,65 @@ it('bonus sponsor tercatat saat PIN dipakai', function () {
     $this->actingAs($anggota, 'web')->post('/tukar', ['code' => $kode->code]);
 
     $trx = Transaction::first();
+    // RO: bonus sponsor = 0 (BUSINESS_RULES.md §6)
+    expect($trx->sponsor_bonus_total)->toBe(0)
+        ->and((int) $trx->bonuses()->sum('amount'))->toBe(0)
+        ->and($trx->bonuses()->count())->toBe(0);
+});
+
+it('bonus sponsor tercatat saat PIN join dipakai', function () {
+    $sponsor = member('distributor');
+
+    // Buat anggota baru lewat PIN registrasi (join).
+    $kode = pin('registration', 3, 1800000);
+    $anggota = member('reseller', $sponsor);
+
+    // Simulasikan join langsung lewat service.
+    $poster = app(\App\Services\TransactionPoster::class);
+    $trx = $poster->post($anggota, $kode->id, 'join');
+
     // Distributor 20% dari Rp1.800.000 = Rp360.000
     expect($trx->sponsor_bonus_total)->toBe(360000)
         ->and((int) $trx->bonuses()->sum('amount'))->toBe(360000);
+});
+
+it('pembeli mendapat PR dari PIN join tanpa PA pribadi', function () {
+    $anggota = member();
+    $kode = pin('registration', 3, 1800000);
+
+    app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'join');
+
+    expect($anggota->fresh()->pointTotal('pr'))->toBe(3)
+        ->and($anggota->fresh()->pointTotal('pa'))->toBe(0);
+});
+
+it('pembeli mendapat PR dari PIN upgrade tanpa PA pribadi', function () {
+    $anggota = member('reseller');
+    $kode = pin('upgrade', 3, 1800000, 'agent');
+
+    app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'upgrade');
+
+    expect($anggota->fresh()->pointTotal('pr'))->toBe(3)
+        ->and($anggota->fresh()->pointTotal('pa'))->toBe(0);
+});
+
+it('pembeli mendapat PR dari PIN RO tanpa PA pribadi', function () {
+    $anggota = member();
+    $kode = pin('ro', 3, 1800000);
+
+    app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'ro');
+
+    expect($anggota->fresh()->pointTotal('pr'))->toBe(3)
+        ->and($anggota->fresh()->pointTotal('pa'))->toBe(0);
+});
+
+it('pembeli otomatis menjadi Manager saat upgrade ke Distributor dan PA cukup', function () {
+    $anggota = member('agent');
+    givePoints($anggota, 'pa', 20);
+    $kode = pin('upgrade', 0, 1800000, 'distributor');
+
+    app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'upgrade');
+
+    expect($anggota->fresh()->rank)->toBe('manager')
+        ->and($anggota->fresh()->is_manager)->toBeTrue();
 });

@@ -72,6 +72,14 @@ class TransactionPoster
                 $this->applyRank($buyer, $pin->target_rank, $trx);
             }
 
+            // Poin pribadi pembeli: selalu PR, tidak pernah PA (BUSINESS_RULES.md §7).
+            $this->addPoints($buyer, ['pr'], (int) $pin->points, $trx);
+
+            // Manager otomatis untuk pembeli setelah upgrade (DECISIONS #49).
+            if ($type === 'upgrade') {
+                $this->promoteIfQualified($buyer->fresh(), $trx);
+            }
+
             // Poin untuk sponsor langsung: join = PA + PR, RO/upgrade = PR saja.
             $sponsor = $buyer->sponsor;
             if ($sponsor !== null) {
@@ -80,32 +88,35 @@ class TransactionPoster
                 $this->promoteIfQualified($sponsor->fresh(), $trx);
             }
 
-            // Bonus sponsor sepanjang rantai upline.
-            $allocations = $this->commission->distribute((int) $pin->price, $buyer->uplineRanks());
+            // Bonus sponsor sepanjang rantai upline — hanya join & upgrade.
+            // RO tidak membayar bonus sponsor (BUSINESS_RULES.md §6).
             $total = 0;
-            $cursor = $buyer->sponsor;
+            if ($type !== 'ro') {
+                $allocations = $this->commission->distribute((int) $pin->price, $buyer->uplineRanks());
+                $cursor = $buyer->sponsor;
 
-            foreach ($allocations as $allocation) {
-                if ($cursor === null) {
-                    break;
+                foreach ($allocations as $allocation) {
+                    if ($cursor === null) {
+                        break;
+                    }
+
+                    if ($allocation['amount'] > 0) {
+                        BonusEntry::create([
+                            'member_id' => $cursor->id,
+                            'kind' => 'sponsor',
+                            'amount' => $allocation['amount'],
+                            'percent_bp' => $allocation['percent_bp'],
+                            'level' => $allocation['level'],
+                            'source_transaction_id' => $trx->id,
+                            // Bonus sponsor cair harian (BUSINESS_RULES.md §3 poin 5).
+                            'status' => 'available',
+                            'available_at' => $now,
+                        ]);
+                        $total += $allocation['amount'];
+                    }
+
+                    $cursor = $cursor->sponsor;
                 }
-
-                if ($allocation['amount'] > 0) {
-                    BonusEntry::create([
-                        'member_id' => $cursor->id,
-                        'kind' => 'sponsor',
-                        'amount' => $allocation['amount'],
-                        'percent_bp' => $allocation['percent_bp'],
-                        'level' => $allocation['level'],
-                        'source_transaction_id' => $trx->id,
-                        // Bonus sponsor cair harian (BUSINESS_RULES.md §3 poin 5).
-                        'status' => 'available',
-                        'available_at' => $now,
-                    ]);
-                    $total += $allocation['amount'];
-                }
-
-                $cursor = $cursor->sponsor;
             }
 
             $trx->update(['sponsor_bonus_total' => $total]);
