@@ -60,7 +60,10 @@ class AdminLoginController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('admin')->logout();
+        foreach (array_keys(config('auth.guards', [])) as $guard) {
+            Auth::guard($guard)->logout();
+        }
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

@@ -47,16 +47,40 @@ it('anggota yang dibekukan dengan sesi aktif ditolak dari rute tukar dan beranda
         ->get('/beranda')
         ->assertForbidden();
 
+    $this->assertGuest('web');
+
     $this->actingAs($member, 'web')
         ->get('/tukar')
         ->assertForbidden();
+
+    $this->assertGuest('web');
 
     $this->actingAs($member, 'web')
         ->post('/tukar', ['code' => $pin->code])
         ->assertForbidden();
 
+    $this->assertGuest('web');
+
     expect($pin->fresh()->status)->toBe('issued')
         ->and(\App\Models\Transaction::count())->toBe(0);
+});
+
+it('anggota yang dibekukan saat sesi aktif ditolak 403, sesinya diakhiri, dan sesi lama tidak bisa dipakai lagi', function () {
+    $member = member('reseller', null, ['status' => 'active']);
+
+    $this->post('/masuk', ['username' => $member->username, 'password' => 'rahasia'])
+        ->assertRedirect('/beranda');
+    $this->assertAuthenticatedAs($member, 'web');
+
+    $member->update(['status' => 'suspended']);
+
+    $this->get('/beranda')->assertForbidden();
+    $this->assertGuest('web');
+
+    // Sesi lama tidak bisa dipakai lagi meskipun akun diaktifkan kembali
+    $member->update(['status' => 'active']);
+    $this->get('/beranda')->assertRedirect('/masuk');
+    $this->assertGuest('web');
 });
 
 it('beranda menampilkan poin dari ledger, bukan dari kolom cache', function () {
@@ -226,6 +250,76 @@ it('login anggota dan admin di sesi sama lalu keluar membuat rute admin menolak'
     $this->assertGuest('admin');
 
     $this->get('/admin')->assertRedirect('/admin/masuk');
+});
+
+it('login anggota dan admin di sesi sama lalu admin keluar mengakhiri semua guard', function () {
+    $member = member('reseller');
+    $admin = Admin::create([
+        'name' => 'Admin Sesi 2',
+        'email' => 'admin-sesi2@uji.local',
+        'password' => Hash::make('rahasia-admin'),
+        'role' => 'admin',
+        'is_active' => true,
+    ]);
+
+    $this->post('/masuk', ['username' => $member->username, 'password' => 'rahasia'])
+        ->assertRedirect('/beranda');
+    $this->post('/admin/masuk', ['email' => 'admin-sesi2@uji.local', 'password' => 'rahasia-admin'])
+        ->assertRedirect('/admin');
+
+    $this->assertAuthenticatedAs($member, 'web');
+    $this->assertAuthenticatedAs($admin, 'admin');
+
+    $this->post('/admin/keluar')->assertRedirect('/admin/masuk');
+
+    $this->assertGuest('web');
+    $this->assertGuest('admin');
+
+    $this->get('/beranda')->assertRedirect('/masuk');
+    $this->get('/admin')->assertRedirect('/admin/masuk');
+});
+
+it('admin yang dinonaktifkan dengan sesi aktif ditolak dari rute admin dan sesinya diakhiri', function () {
+    $admin = Admin::create([
+        'name' => 'Admin Aktif',
+        'email' => 'admin-aktif@uji.local',
+        'password' => Hash::make('rahasia-admin'),
+        'role' => 'admin',
+        'is_active' => true,
+    ]);
+
+    $this->post('/admin/masuk', ['email' => 'admin-aktif@uji.local', 'password' => 'rahasia-admin'])
+        ->assertRedirect('/admin');
+    $this->assertAuthenticatedAs($admin, 'admin');
+
+    $admin->update(['is_active' => false]);
+
+    $this->get('/admin/pin')
+        ->assertForbidden();
+
+    $this->assertGuest('admin');
+});
+
+it('anggota yang sudah masuk dialihkan dari halaman login anggota ke beranda', function () {
+    $member = member('reseller');
+
+    $this->actingAs($member, 'web')
+        ->get('/masuk')
+        ->assertRedirect('/beranda');
+});
+
+it('admin yang sudah masuk dialihkan dari halaman login admin ke beranda admin', function () {
+    $admin = Admin::create([
+        'name' => 'Admin Uji',
+        'email' => 'admin-guest@uji.local',
+        'password' => Hash::make('rahasia-admin'),
+        'role' => 'admin',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($admin, 'admin')
+        ->get('/admin/masuk')
+        ->assertRedirect('/admin');
 });
 
 it('respons memuat header keamanan X-Frame-Options, X-Content-Type-Options, dan Referrer-Policy', function () {

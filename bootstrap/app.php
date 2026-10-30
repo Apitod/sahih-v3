@@ -16,10 +16,16 @@ return Application::configure(basePath: dirname(__DIR__))
             ? route('admin.login')
             : route('login'));
 
+        // Pengguna terautentikasi yang membuka halaman login dikirim ke beranda masing-masing.
+        $middleware->redirectUsersTo(fn (\Illuminate\Http\Request $request) => $request->is('admin*')
+            ? route('admin.beranda')
+            : route('beranda'));
+
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
         $middleware->alias([
             'active.member' => \App\Http\Middleware\EnsureActiveMember::class,
+            'active.admin' => \App\Http\Middleware\EnsureActiveAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
