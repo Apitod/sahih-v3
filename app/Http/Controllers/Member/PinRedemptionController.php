@@ -19,9 +19,11 @@ class PinRedemptionController extends Controller
         private RankResolver $ranks,
     ) {}
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $member = Auth::guard('web')->user();
+
+        $halamanRiwayat = max(1, (int) $request->query('riwayat', 1));
 
         return view('tukar', [
             // PIN registrasi ditolak di halaman ini, jadi tidak perlu ditampilkan.
@@ -33,9 +35,16 @@ class PinRedemptionController extends Controller
             'riwayat' => Transaction::where('member_id', $member->id)
                 ->with('pin')
                 ->latest('id')
-                ->limit(10)
-                ->get(),
+                ->paginate(8, ['*'], 'riwayat', $halamanRiwayat),
             'peringkat' => ['reseller' => 'Reseller', 'agent' => 'Agent', 'distributor' => 'Distributor', 'manager' => 'Manager'],
+            'status' => [
+                'aktif' => $member->status === 'active',
+                'peringkat' => $member->rank,
+                'jumlah_pin' => Pin::where('assigned_member_id', $member->id)
+                    ->where('status', 'issued')
+                    ->where('type', '!=', 'registration')
+                    ->count(),
+            ],
         ]);
     }
 

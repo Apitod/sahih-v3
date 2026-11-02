@@ -8,7 +8,6 @@ use App\Models\MilestoneReward;
 use App\Models\PointEntry;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -19,14 +18,14 @@ class DatabaseSeeder extends Seeder
         $this->anggotaContoh();
     }
 
-    /** Akun admin pertama. Password acak, ditulis ke berkas 600 — tidak dicetak ke layar. */
+    /** Akun admin pertama. Password tetap untuk pengembangan lokal — WAJIB diganti sebelum produksi. */
     private function admin(): void
     {
         if (Admin::where('email', 'admin@sahih.local')->exists()) {
             return;
         }
 
-        $password = Str::password(20, symbols: false);
+        $password = 'admin123';
 
         Admin::create([
             'name' => 'Admin Sahih',
@@ -37,7 +36,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // HOME bisa kosong di cron/container: tanpa cadangan, path jadi '/.sahih-...'
-        // dan password acak hilang setelah baris admin terlanjur dibuat.
+        // dan password hilang setelah baris admin terlanjur dibuat.
         $isi = "email: admin@sahih.local\npassword: {$password}\n";
         $path = (getenv('HOME') ?: sys_get_temp_dir()).'/.sahih-admin-credentials';
 
@@ -78,7 +77,7 @@ class DatabaseSeeder extends Seeder
             'username' => 'sponsor',
             'name' => 'Sponsor Contoh',
             'phone' => '0800000000',
-            'password' => Hash::make(Str::password(20, symbols: false)),
+            'password' => Hash::make('sponsor123'),
             'rank' => 'distributor',
             'joined_at' => now()->subMonths(2),
         ]);
