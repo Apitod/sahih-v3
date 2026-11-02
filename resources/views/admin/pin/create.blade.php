@@ -10,7 +10,7 @@
 
 @section('isi')
     <h1 class="font-display text-2xl">Buat PIN</h1>
-    <p class="mt-1 text-sm text-tinta/70">Harga PIN registrasi Rp {{ number_format(config('sahih.registration_price_per_point', 600000), 0, ',', '.') }}/poin, PIN RO Rp {{ number_format(config('sahih.ro_price_per_point', 500000), 0, ',', '.') }}/poin, dan PIN upgrade sebesar selisih paket (mis. Reseller &rarr; Agent Rp 1.200.000). Manager tidak dijual lewat PIN — otomatis setelah Distributor + 20 poin PA.</p>
+    <p class="mt-1 text-sm text-tinta/70">Harga PIN registrasi Rp {{ number_format($hargaRegistrasi, 0, ',', '.') }}/pin, PIN RO Rp {{ number_format($hargaRo, 0, ',', '.') }}/pin, dan PIN upgrade sebesar selisih paket. Manager tidak dijual lewat PIN — otomatis setelah Distributor + 20 poin PA. <a href="{{ route('admin.pengaturan') }}" class="underline">Ubah harga</a>.</p>
 
     <form method="POST" action="{{ route('admin.pin.store') }}" class="mt-6 max-w-xl space-y-4 rounded-kartu border border-garis bg-kertas p-5">
         @csrf
@@ -45,7 +45,7 @@
             <label class="block">
                 <span class="text-sm text-tinta/70">Harga (rupiah)</span>
                 <input type="number" name="price" min="0" step="1000" value="{{ old('price', 600000) }}" class="mt-1 w-full rounded-kartu border border-garis px-3 py-2 tabular-nums">
-                <span class="mt-1 block text-xs text-tinta/60">PIN RO: Rp {{ number_format(config('sahih.ro_price_per_point', 500000), 0, ',', '.') }} &times; jumlah poin. PIN registrasi: Rp {{ number_format(config('sahih.registration_price_per_point', 600000), 0, ',', '.') }} &times; jumlah poin. PIN upgrade: selisih harga paket.</span>
+                <span class="mt-1 block text-xs text-tinta/60">PIN RO: Rp {{ number_format($hargaRo, 0, ',', '.') }} &times; jumlah pin. PIN registrasi: Rp {{ number_format($hargaRegistrasi, 0, ',', '.') }} &times; jumlah pin. PIN upgrade: selisih harga paket.</span>
                 @error('price') <span class="text-xs text-red-700">{{ $message }}</span> @enderror
             </label>
         </div>

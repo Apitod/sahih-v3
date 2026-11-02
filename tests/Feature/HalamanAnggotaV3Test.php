@@ -1,0 +1,137 @@
+<?php
+
+use App\Models\BonusEntry;
+use App\Services\TransactionPoster;
+
+/**
+ * Halaman anggota sesuai PRD v3.0 §7.2 (koreksi Owner 2 November 2026).
+ *
+ * Yang diuji di sini:
+ *  - Beranda punya bagian "Pohon Genealogi" (maks 3 tingkat, nama + peringkat)
+ *  - Beranda punya bagian "Cek Bonus" (level, persen, status, tanggal — tanpa rupiah)
+ *  - Halaman tukar menyebut dua jenis PIN dan jalan naik peringkat dari PR
+ *  - Tidak ada nilai rupiah di halaman anggota (PRD v3.0 §3.1, §10)
+ */
+
+// ---------------------------------------------------------------- pohon genealogi
+
+it('beranda menampilkan pohon genealogi sampai tiga tingkat', function () {
+    $a = member('reseller');
+    $b = member('agent', $a);
+    $c = member('distributor', $b);
+    $d = member('manager', $c, ['is_manager' => true]);
+    $e = member('reseller', $d);   // tingkat 4 — di luar batas
+
+    $this->actingAs($a, 'web')
+        ->get('/beranda')
+        ->assertOk()
+        ->assertSee('Pohon Genealogi')
+        ->assertSee($b->name)
+        ->assertSee($c->name)
+        ->assertSee($d->name)
+        ->assertDontSee($e->name);
+});
+
+it('pohon genealogi menampilkan peringkat tiap anggota', function () {
+    $a = member('reseller');
+    $b = member('agent', $a);
+    $c = member('distributor', $b);
+
+    $this->actingAs($a, 'web')
+        ->get('/beranda')
+        ->assertOk()
+        ->assertSee($b->username)
+        ->assertSee('Agent')
+        ->assertSee($c->username)
+        ->assertSee('Distributor');
+});
+
+it('pohon genealogi kosong memakai keadaan kosong, bukan tabel palsu', function () {
+    $a = member('reseller');
+
+    $this->actingAs($a, 'web')
+        ->get('/beranda')
+        ->assertOk()
+        ->assertSee('Pohon Genealogi')
+        ->assertSee('Belum ada anggota di jaringan Anda');
+});
+
+// ---------------------------------------------------------------- cek bonus
+
+it('cek bonus menampilkan level, persen, status, dan tanggal', function () {
+    $sponsor = member('distributor');
+    $anggota = member('reseller', $sponsor);
+
+    app(TransactionPoster::class)->post($anggota, pin('registration', 3, 1800000)->id, 'join');
+
+    $bonus = BonusEntry::where('member_id', $sponsor->id)->firstOrFail();
+    expect($bonus->percent_bp)->toBe(2000);   // Distributor 20%
+
+    $this->actingAs($sponsor, 'web')
+        ->get('/beranda')
+        ->assertOk()
+        ->assertSee('Cek Bonus')
+        ->assertSee('20%')
+        ->assertSee('level 1')
+        ->assertSee('tersedia');
+});
+
+it('cek bonus tidak menampilkan nominal rupiah', function () {
+    $sponsor = member('distributor');
+    $anggota = member('reseller', $sponsor);
+
+    app(TransactionPoster::class)->post($anggota, pin('registration', 3, 1800000)->id, 'join');
+
+    // Bonus sponsor 20% x Rp 1.800.000 = Rp 360.000 — angka ini tidak boleh muncul.
+    expect((int) BonusEntry::where('member_id', $sponsor->id)->sum('amount'))->toBe(360000);
+
+    $this->actingAs($sponsor, 'web')
+        ->get('/beranda')
+        ->assertOk()
+        ->assertDontSee('360.000')
+        ->assertDontSee('Rp');
+});
+
+it('cek bonus kosong memakai keadaan kosong', function () {
+    $a = member('reseller');
+
+    $this->actingAs($a, 'web')
+        ->get('/beranda')
+        ->assertOk()
+        ->assertSee('Cek Bonus')
+        ->assertSee('Belum ada bonus yang masuk');
+});
+
+// ---------------------------------------------------------------- halaman tukar
+
+it('halaman tukar menyebut dua jenis PIN saja', function () {
+    $a = member('reseller');
+
+    $this->actingAs($a, 'web')
+        ->get('/tukar')
+        ->assertOk()
+        ->assertSee('dua jenis PIN')
+        ->assertSee('PIN RO');
+});
+
+it('halaman tukar menjelaskan naik peringkat juga otomatis dari poin reward', function () {
+    $a = member('reseller');
+
+    $this->actingAs($a, 'web')
+        ->get('/tukar')
+        ->assertOk()
+        ->assertSee('Naik peringkat juga bisa otomatis dari total Poin Reward Anda.');
+});
+
+it('halaman tukar tidak menampilkan nilai rupiah', function () {
+    $a = member('reseller');
+    $kode = pin('ro', 2, 1000000);
+    $kode->update(['assigned_member_id' => $a->id]);
+
+    $this->actingAs($a, 'web')
+        ->get('/tukar')
+        ->assertOk()
+        ->assertSee($kode->code)
+        ->assertDontSee('Rp')
+        ->assertDontSee('1.000.000');
+});

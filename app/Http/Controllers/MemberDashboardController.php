@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Member;
 use App\Models\MilestoneReward;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -38,15 +39,54 @@ class MemberDashboardController extends Controller
             ->orderByDesc('cycle')
             ->paginate(self::PER_HALAMAN, ['*'], 'hadiah', $halamanHadiah);
 
+        // Cek bonus (PRD v3.0 §7.2): rincian bonus sponsor yang sudah masuk.
+        // Nominal rupiah (kolom amount) sengaja tidak diambil — §3.1 melarang
+        // nilai rupiah tampil di halaman anggota.
+        $bonus = $member->bonusEntries()
+            ->select(['id', 'member_id', 'kind', 'percent_bp', 'level', 'status', 'available_at', 'created_at'])
+            ->orderByDesc('id')
+            ->paginate(self::PER_HALAMAN, ['*'], 'bonus');
+
         return view('beranda', [
             'member' => $member,
             // Angka di halaman ini selalu dari ledger, bukan kolom cache.
             'poin' => $poin,
             'riwayat' => $riwayat,
             'hadiah' => $hadiah,
+            'bonus' => $bonus,
+            'jaringan' => $this->jaringanTigaTingkat($member),
             'sponsor' => $member->sponsor,
             'status' => $this->statusRingkas($member, $totalPoin),
         ]);
+    }
+
+    /**
+     * Pohon genealogi sampai tiga tingkat (PRD v3.0 §7.2, keputusan #39:
+     * nama + peringkat saja). Dibatasi supaya beranda tidak menarik seluruh
+     * jaringan ke memori.
+     *
+     * @return array<int, array{tingkat: int, anggota: \Illuminate\Support\Collection}>
+     */
+    private function jaringanTigaTingkat($member): array
+    {
+        $hasil = [];
+        $sekarang = collect([$member]);
+
+        for ($tingkat = 1; $tingkat <= 3; $tingkat++) {
+            $id = $sekarang->pluck('id')->all();
+
+            $sekarang = Member::whereIn('sponsor_id', $id)
+                ->orderBy('username')
+                ->get(['id', 'username', 'name', 'rank', 'sponsor_id']);
+
+            if ($sekarang->isEmpty()) {
+                break;
+            }
+
+            $hasil[] = ['tingkat' => $tingkat, 'anggota' => $sekarang];
+        }
+
+        return $hasil;
     }
 
     /**
@@ -61,10 +101,12 @@ class MemberDashboardController extends Controller
         $indeks = array_search($member->rank, $urutan, true);
         $berikutnya = $indeks !== false && $indeks < count($urutan) - 1 ? $urutan[$indeks + 1] : null;
 
-        // Ambang poin pendaftaran per peringkat: 1 = reseller, 3 = agent, 6 = distributor.
-        $ambangPeringkat = (array) config('sahih.rank_by_points');
+        // PRD v3.0 §3.3: peringkat ditentukan total PR, bukan total semua poin.
+        // Ambangnya 1 = Reseller, 3 = Agent, 6 = Distributor.
+        $ambangPeringkat = (array) config('sahih.rank_by_pr');
         $syaratManagerPa = (int) config('sahih.manager_min_pa');
 
+        $pr = (int) $member->pointTotal('pr');
         $progres = null;
 
         if ($berikutnya === 'manager') {
@@ -76,23 +118,13 @@ class MemberDashboardController extends Controller
                 'target' => $syaratManagerPa,
                 'satuan' => 'poin PA',
             ];
-        } elseif ($berikutnya !== null) {
-            $target = null;
-            foreach ($ambangPeringkat as $poinPaket => $namaPeringkat) {
-                if ($namaPeringkat === $berikutnya) {
-                    $target = (int) $poinPaket;
-                    break;
-                }
-            }
-
-            if ($target !== null) {
-                $progres = [
-                    'label' => 'Menuju '.ucfirst($berikutnya),
-                    'sekarang' => $totalPoin,
-                    'target' => $target,
-                    'satuan' => 'poin',
-                ];
-            }
+        } elseif ($berikutnya !== null && isset($ambangPeringkat[$berikutnya])) {
+            $progres = [
+                'label' => 'Menuju '.ucfirst($berikutnya),
+                'sekarang' => $pr,
+                'target' => (int) $ambangPeringkat[$berikutnya],
+                'satuan' => 'poin PR',
+            ];
         }
 
         if ($progres !== null) {

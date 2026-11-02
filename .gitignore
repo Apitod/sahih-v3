@@ -5,6 +5,10 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+
+# Cadangan sebelum edit (dibuat dengan cp -a file file.bak-YYYYmmdd-HHMMSS).
+# Jangan pernah masuk repo: isinya salinan berkas lama dan kredensial.
+*.bak-*
 /.fleet
 /.idea
 /.nova

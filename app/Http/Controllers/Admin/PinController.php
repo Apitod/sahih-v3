@@ -44,9 +44,14 @@ class PinController extends Controller
 
     public function create(): View
     {
+        $harga = app(\App\Services\PengaturanHarga::class);
+
         return view('admin.pin.create', [
             // Manager tidak dijual (DECISIONS #58) — muncul otomatis setelah Distributor + 20 poin PA.
             'peringkat' => ['reseller' => 'Reseller', 'agent' => 'Agent', 'distributor' => 'Distributor'],
+            // Harga per pin dari pengaturan, supaya Owner bisa mengubah tanpa sentuh kode.
+            'hargaRegistrasi' => $harga->ambil('harga_pin_registrasi'),
+            'hargaRo' => $harga->ambil('harga_pin_ro'),
         ]);
     }
 

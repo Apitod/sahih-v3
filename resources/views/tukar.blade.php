@@ -22,7 +22,13 @@
         <div>
             <h1 class="font-display text-2xl tracking-tight">Tukar PIN</h1>
             <p class="mt-1 text-sm text-tinta/70">
-                Masukkan kode PIN yang Anda terima dari admin. Satu PIN hanya bisa dipakai sekali.
+                Masukkan kode PIN yang Anda terima dari admin. Satu PIN hanya bisa dipakai sekali dan tidak punya masa kedaluwarsa.
+            </p>
+            <p class="mt-1 text-sm text-tinta/70">
+                Ada dua jenis PIN: PIN RO untuk repeat order, dan PIN registrasi/upgrade untuk naik peringkat.
+            </p>
+            <p class="mt-1 text-sm text-tinta/70">
+                Naik peringkat juga bisa otomatis dari total Poin Reward Anda.
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">

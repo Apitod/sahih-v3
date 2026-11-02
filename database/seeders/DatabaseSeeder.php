@@ -56,7 +56,8 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        foreach ([[5, 'Produk'], [20, 'Produk'], [75, 'Handphone'], [500, 'Motor'], [3500, 'Mobil']] as $i => [$ambang, $nama]) {
+        // Keputusan Owner 1 Nov 2026: hadiah 20 poin = Voucher (sesuai poster), bukan Produk.
+        foreach ([[5, 'Produk'], [20, 'Voucher'], [75, 'Handphone'], [500, 'Motor'], [3500, 'Mobil']] as $i => [$ambang, $nama]) {
             MilestoneReward::create([
                 'threshold' => $ambang,
                 'name' => $nama,

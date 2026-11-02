@@ -15,6 +15,8 @@ use App\Models\PointEntry;
  */
 class MilestoneEvaluator
 {
+    public function __construct(private PengaturanHarga $harga) {}
+
     public function totalPr(Member $member): int
     {
         return (int) PointEntry::where('member_id', $member->id)->where('kind', 'pr')->sum('delta');
@@ -32,28 +34,29 @@ class MilestoneEvaluator
             return 0;
         }
 
-        // Panjang satu putaran DIKUNCI di config (DECISIONS #61), tidak mengikuti ambang
-        // tertinggi yang sedang aktif: mematikan satu hadiah tidak boleh mengubah
-        // hitungan hadiah anggota lain.
-        $cycleLength = (int) config('sahih.milestone_cycle_points', 3500);
+        // Panjang satu putaran DIKUNCI di pengaturan (DECISIONS #61), tidak mengikuti
+        // ambang tertinggi yang sedang aktif: mematikan satu hadiah tidak boleh mengubah
+        // hitungan hadiah anggota lain. Owner bisa mengubahnya lewat panel.
+        $cycleLength = $this->harga->ambil('putaran_hadiah');
         if ($cycleLength < 1) {
             $cycleLength = (int) $rewards->max('threshold');
         }
 
-        // Hadiah yang ambangnya melebihi panjang satu putaran tidak bisa dinilai dengan
-        // hitungan putaran: dulu hadiah seperti itu langsung jadi hak member di putaran
-        // pertama (mis. ambang 10.000 diberikan saat PR baru 3.500). Sekarang dilewati
-        // sampai aturan untuk hadiah di atas 3.500 diputuskan Owner.
-        $rewards = $rewards->filter(fn ($reward) => (int) $reward->threshold <= $cycleLength)->values();
+        // Hadiah di dalam satu putaran (<= 3.500) dinilai per putaran: tiap kali
+        // anggota menembus 3.500, hitungan mulai dari nol lagi dan seluruh tangga
+        // terbuka sekali lagi (keputusan Owner 2 Nov: "udah di atas 3.500 ke ulang ke 0 lagi").
+        $dalamPutaran = $rewards->filter(fn ($reward) => (int) $reward->threshold <= $cycleLength)->values();
 
-        if ($rewards->isEmpty()) {
-            return 0;
-        }
+        // Hadiah yang ambangnya di ATAS 3.500 tidak bisa dinilai per putaran (ambangnya
+        // tidak akan pernah tercapai di dalam satu putaran). Untuk hadiah seperti ini
+        // dipakai hitungan langsung terhadap total PR: ambang 10.000 diberikan sekali
+        // saat PR 10.000, dua kali saat 20.000, dan seterusnya.
+        $diAtasPutaran = $rewards->filter(fn ($reward) => (int) $reward->threshold > $cycleLength)->values();
 
         $fullCycles = intdiv($pr, max(1, $cycleLength));
         $offset = $pr % max(1, $cycleLength);
 
-        foreach ($rewards as $reward) {
+        foreach ($dalamPutaran as $reward) {
             $threshold = (int) $reward->threshold;
 
             for ($cycle = 1; $cycle <= $fullCycles; $cycle++) {
@@ -64,6 +67,17 @@ class MilestoneEvaluator
 
             if ($offset >= $threshold && $this->claim($member, $reward, $fullCycles + 1)) {
                 $created++;
+            }
+        }
+
+        foreach ($diAtasPutaran as $reward) {
+            $threshold = (int) $reward->threshold;
+            $kali = intdiv($pr, $threshold);
+
+            for ($n = 1; $n <= $kali; $n++) {
+                if ($this->claim($member, $reward, $n)) {
+                    $created++;
+                }
             }
         }
 

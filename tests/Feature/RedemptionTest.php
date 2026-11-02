@@ -212,14 +212,15 @@ it('pembeli mendapat PR dari PIN upgrade tanpa PA pribadi', function () {
         ->and($anggota->fresh()->pointTotal('pa'))->toBe(0);
 });
 
-it('pembeli mendapat PR dari PIN RO tanpa PA pribadi', function () {
+it('pembeli mendapat PR dan PA dari PIN RO', function () {
     $anggota = member();
     $kode = pin('ro', 3, 1500000);
 
     app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'ro');
 
+    // PRD v3.0 §3.5 / DECISIONS #65: RO memberi PR + PA ke pembeli.
     expect($anggota->fresh()->pointTotal('pr'))->toBe(3)
-        ->and($anggota->fresh()->pointTotal('pa'))->toBe(0);
+        ->and($anggota->fresh()->pointTotal('pa'))->toBe(3);
 });
 
 it('pembeli otomatis menjadi Manager saat upgrade ke Distributor dan PA cukup', function () {

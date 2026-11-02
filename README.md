@@ -55,10 +55,23 @@ Aplikasi punya dua jenis pengguna dengan area terpisah:
 
 ### Domain / Aturan Bisnis
 - **Peringkat anggota** (naik): `reseller → agent → distributor → manager`.
+  Naik **otomatis dari total Poin Reward (PR)**: 1 PR = Reseller, 3 PR = Agent, 6 PR = Distributor.
+  PR dari anggota yang kita sponsori ikut dihitung. Selain itu tetap bisa naik lewat **PIN upgrade**.
   Manager **tidak dijual lewat PIN** — otomatis didapat setelah Distributor + 20 poin PA.
+- **Tiga jenis poin**: PA (syarat Manager), PR (hadiah + peringkat), PL (bonus leadership).
+  **RO memberi PR + PA** ke pembeli; sponsor hanya dapat PR dari RO.
+- **Poin leadership** hanya dicatat untuk **Manager**. Sebelum jadi Manager, PL hangus —
+  tidak ditabung dan tidak dihitung di kemudian hari. Manager yang RO sendiri ikut dapat PL.
 - **Bonus sponsor** per peringkat: Reseller 15%, Agent 18%, Distributor 20%, Manager 20%,
-  dengan batas total 20% per transaksi (basis point di `config/sahih.php`).
+  dengan batas total 20% per transaksi, rantai ditelusuri sampai **50 tingkat**.
+  Sisa selisih yang tidak terbayar hangus (tidak masuk ke siapa pun).
 - **Hadiah milestone** dengan ambang 5 / 20 / 75 / 500 / 3.500 poin, berulang per siklus 3.500 poin.
+  Hadiah yang ambangnya di atas 3.500 dinilai dari total PR (tidak lagi diblokir).
+- **Harga & ambang bisa diubah Owner** lewat `/admin/pengaturan` (khusus Superadmin):
+  harga per pin registrasi/upgrade, harga per pin RO, nilai poin leadership, syarat PA Manager,
+  dan putaran hadiah. Tersimpan di tabel `settings`, dengan `config/sahih.php` sebagai nilai awal.
+- **Nilai rupiah tidak pernah ditampilkan ke anggota** — halaman anggota hanya menampilkan
+  angka poin dan nama hadiah.
 - **Penarikan (withdrawal)** dengan minimum Rp 100.000.
 
 ---

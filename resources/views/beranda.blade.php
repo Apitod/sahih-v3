@@ -214,4 +214,119 @@
             <x-paginasi :paginator="$hadiah" label="hadiah" />
         @endif
     </section>
+
+    {{-- Cek bonus (PRD v3.0 §7.2) — tanpa nominal rupiah, §3.1 --}}
+    <section class="mt-8" aria-labelledby="judul-bonus">
+        <h2 id="judul-bonus" class="font-display text-lg">Cek Bonus</h2>
+
+        @if ($bonus->isEmpty())
+            <div class="mt-3">
+                <x-kosong judul="Belum ada bonus yang masuk"
+                          pesan="Bonus sponsor muncul setelah ada anggota di jaringan Anda yang bertransaksi." />
+            </div>
+        @else
+            <div class="mt-3 overflow-x-auto rounded-kartu border border-garis bg-kertas">
+                <table class="w-full text-sm">
+                    <caption class="sr-only">Rincian bonus sponsor yang masuk ke akun Anda</caption>
+                    <thead class="border-b border-garis bg-krem/60 text-left text-xs uppercase tracking-wide text-tinta/60">
+                        <tr>
+                            <th scope="col" class="px-4 py-2 font-medium">Tanggal</th>
+                            <th scope="col" class="px-4 py-2 font-medium">Jenis</th>
+                            <th scope="col" class="px-4 py-2 text-right font-medium">Persen</th>
+                            <th scope="col" class="px-4 py-2 font-medium">Posisi</th>
+                            <th scope="col" class="px-4 py-2 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-garis">
+                        @foreach ($bonus as $baris)
+                            @php
+                                $nadaBonus = match ($baris->status) {
+                                    'available' => 'sukses',
+                                    'pending' => 'proses',
+                                    'withdrawn' => 'info',
+                                    'void' => 'bahaya',
+                                    default => 'netral',
+                                };
+                                $teksBonus = match ($baris->status) {
+                                    'available' => 'tersedia',
+                                    'pending' => 'menunggu',
+                                    'withdrawn' => 'sudah dicairkan',
+                                    'void' => 'dibatalkan',
+                                    default => $baris->status,
+                                };
+                                $labelJenisBonus = match ($baris->kind) {
+                                    'sponsor' => 'bonus sponsor',
+                                    'differential' => 'selisih peringkat',
+                                    'leadership' => 'leadership',
+                                    'rm' => 'royal manager',
+                                    default => $baris->kind,
+                                };
+                            @endphp
+                            <tr class="hover:bg-krem/40">
+                                <td class="whitespace-nowrap px-4 py-2 text-tinta/70">
+                                    {{ ($baris->available_at ?? $baris->created_at)?->translatedFormat('j M Y') }}
+                                </td>
+                                <td class="px-4 py-2">{{ $labelJenisBonus }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums">
+                                    {{ $baris->percent_bp !== null ? rtrim(rtrim(number_format($baris->percent_bp / 100, 2, ',', '.'), '0'), ',').'%' : '—' }}
+                                </td>
+                                <td class="px-4 py-2 text-tinta/70">
+                                    {{ $baris->level !== null ? 'level '.$baris->level : '—' }}
+                                </td>
+                                <td class="px-4 py-2">
+                                    <x-badge :tone="$nadaBonus">{{ $teksBonus }}</x-badge>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mt-2 text-xs text-tinta/60">
+                Bonus dicairkan lewat admin. Halaman ini hanya menampilkan persen dan statusnya.
+            </p>
+
+            <x-paginasi :paginator="$bonus" label="baris bonus" />
+        @endif
+    </section>
+
+    {{-- Pohon genealogi (PRD v3.0 §7.2, keputusan #39: nama + peringkat) --}}
+    <section class="mt-8" aria-labelledby="judul-jaringan">
+        <h2 id="judul-jaringan" class="font-display text-lg">Pohon Genealogi</h2>
+
+        @if (empty($jaringan))
+            <div class="mt-3">
+                <x-kosong judul="Belum ada anggota di jaringan Anda"
+                          pesan="Anggota yang Anda sponsori akan muncul di sini beserta peringkatnya." />
+            </div>
+        @else
+            <div class="mt-3 space-y-3">
+                @foreach ($jaringan as $lapis)
+                    <div class="rounded-kartu border border-garis bg-kertas">
+                        <p class="border-b border-garis bg-krem/60 px-4 py-2 text-xs font-medium uppercase tracking-wide text-tinta/60">
+                            Tingkat {{ $lapis['tingkat'] }}
+                            <span class="normal-case tracking-normal">&middot; {{ $lapis['anggota']->count() }} anggota</span>
+                        </p>
+                        <ul class="divide-y divide-garis">
+                            @foreach ($lapis['anggota'] as $bawahan)
+                                <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                                    <div class="min-w-0">
+                                        <p class="font-medium">{{ $bawahan->name }}</p>
+                                        <p class="text-xs text-tinta/60">{{ $bawahan->username }}</p>
+                                    </div>
+                                    <x-badge :tone="$warnaPeringkat[$bawahan->rank] ?? 'netral'">
+                                        {{ $labelPeringkat[$bawahan->rank] ?? ucfirst($bawahan->rank) }}
+                                    </x-badge>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
+            </div>
+
+            <p class="mt-2 text-xs text-tinta/60">
+                Ditampilkan sampai tiga tingkat. Hubungi admin untuk susunan selengkapnya.
+            </p>
+        @endif
+    </section>
 @endsection

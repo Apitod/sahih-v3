@@ -14,6 +14,8 @@ namespace App\Services;
  */
 class PackagePrice
 {
+    public function __construct(private PengaturanHarga $harga) {}
+
     /** Poin paket untuk sebuah peringkat. */
     public function pointsForRank(string $rank): int
     {
@@ -29,7 +31,7 @@ class PackagePrice
     /** Harga paket sebuah peringkat dalam rupiah. */
     public function priceForRank(string $rank): int
     {
-        return $this->pointsForRank($rank) * (int) config('sahih.registration_price_per_point');
+        return $this->pointsForRank($rank) * $this->harga->ambil('harga_pin_registrasi');
     }
 
     /** Harga PIN upgrade dari peringkat sekarang ke peringkat tujuan. */

@@ -40,8 +40,12 @@ class Member extends Authenticatable
     }
 
     /** Rantai upline dari sponsor langsung ke atas, berhenti kalau putus. */
-    public function uplineRanks(int $max = 20): array
+    public function uplineRanks(int $max = 0): array
     {
+        // Batas diambil dari config (DECISIONS #60: 50 tingkat). Parameter $max
+        // masih diterima supaya pemanggil lama tidak pecah.
+        $max = $max > 0 ? $max : (int) config('sahih.sponsor_chain_max_level', 50);
+
         $ranks = [];
         $current = $this->sponsor;
         $guard = 0;
@@ -52,5 +56,24 @@ class Member extends Authenticatable
         }
 
         return $ranks;
+    }
+
+    /**
+     * Peringkat yang seharusnya dimiliki anggota berdasarkan total PR
+     * (PRD v3.0 §3.3): 1 PR = Reseller, 3 PR = Agent, 6 PR = Distributor.
+     * Manager tidak ditentukan dari PR — syaratnya Distributor + 20 PA.
+     */
+    public function rankForPr(int $pr): string
+    {
+        $peta = (array) config('sahih.rank_by_pr', []);
+        $dapat = 'reseller';
+
+        foreach ($peta as $rank => $ambang) {
+            if ($pr >= (int) $ambang) {
+                $dapat = $rank;
+            }
+        }
+
+        return $dapat;
     }
 }

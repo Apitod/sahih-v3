@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\PinController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\AdminLoginController;
@@ -44,4 +45,8 @@ Route::middleware(['auth:admin', 'active.admin'])->prefix('admin')->group(functi
     Route::get('/pin/baru', [PinController::class, 'create'])->name('admin.pin.create');
     Route::post('/pin', [PinController::class, 'store'])->name('admin.pin.store');
     Route::post('/pin/{pin}/batalkan', [PinController::class, 'void'])->name('admin.pin.void');
+
+    // Pengaturan harga & ambang — hanya Superadmin (lihat PengaturanController).
+    Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('admin.pengaturan');
+    Route::post('/pengaturan', [PengaturanController::class, 'simpan'])->name('admin.pengaturan.simpan');
 });

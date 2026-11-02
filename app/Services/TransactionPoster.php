@@ -25,6 +25,7 @@ class TransactionPoster
         private RankResolver $ranks,
         private MilestoneEvaluator $milestones,
         private PackagePrice $packagePrice,
+        private PengaturanHarga $harga,
     ) {}
 
     public function post(Member $buyer, int $pinId, string $type, ?int $adminId = null): Transaction
@@ -62,18 +63,19 @@ class TransactionPoster
                 throw new \RuntimeException("Jenis PIN {$pin->type} tidak cocok untuk transaksi {$type}.");
             }
 
-            // Penjaga harga RO (DECISIONS #56): Rp 500.000 per poin, diperiksa lagi saat
+            // Penjaga harga RO (DECISIONS #56): harga per pin, diperiksa lagi saat
             // PIN dipakai. PIN yang terbit sebelum aturan ini, atau baris yang diubah
             // langsung di database, tidak boleh lolos dengan nominal lama.
+            // Angka per pin diambil dari pengaturan supaya Owner bisa mengubahnya.
             if ($type === 'ro') {
-                $expectedPrice = (int) $pin->points * (int) config('sahih.ro_price_per_point');
+                $expectedPrice = (int) $pin->points * $this->harga->ambil('harga_pin_ro');
 
                 if ((int) $pin->price !== $expectedPrice) {
                     throw new \RuntimeException("Harga PIN {$pin->code} tidak sesuai untuk RO {$pin->points} poin.");
                 }
             }
 
-            // Penjaga PIN registrasi: poin harus salah satu paket §2, harga Rp 600.000/poin (§1).
+            // Penjaga PIN registrasi: poin harus salah satu paket §2, harga per pin × jumlah pin.
             if ($type === 'join') {
                 $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
 
@@ -81,7 +83,7 @@ class TransactionPoster
                     throw new \RuntimeException("PIN {$pin->code} berisi {$pin->points} poin — bukan paket pendaftaran.");
                 }
 
-                $expectedPrice = (int) $pin->points * (int) config('sahih.registration_price_per_point');
+                $expectedPrice = (int) $pin->points * $this->harga->ambil('harga_pin_registrasi');
 
                 if ((int) $pin->price !== $expectedPrice) {
                     throw new \RuntimeException("Harga PIN {$pin->code} tidak sesuai untuk pendaftaran {$pin->points} poin.");
@@ -151,19 +153,30 @@ class TransactionPoster
                 $this->applyRank($buyer, $pin->target_rank, $trx);
             }
 
-            // Poin pribadi pembeli: selalu PR, tidak pernah PA (BUSINESS_RULES.md §7).
-            $this->addPoints($buyer, ['pr'], (int) $pin->points, $trx);
+            // Poin pribadi pembeli (PRD v3.0 §3.5):
+            //  - join & upgrade: PR saja
+            //  - RO: PR + PA (koreksi Owner 2 Nov, DECISIONS #65)
+            $kindsPembeli = $type === 'ro' ? ['pr', 'pa'] : ['pr'];
+            $this->addPoints($buyer, $kindsPembeli, (int) $pin->points, $trx);
 
-            // Manager otomatis untuk pembeli setelah upgrade (DECISIONS #49).
-            if ($type === 'upgrade') {
-                $this->promoteIfQualified($buyer->fresh(), $trx);
-            }
+            // Naik peringkat otomatis dari total PR (PRD v3.0 §3.3).
+            // Total PR termasuk PR yang datang dari anggota yang kita sponsori,
+            // jadi pemeriksaan ini dijalankan untuk pembeli DAN sponsornya.
+            $this->promoteByPr($buyer->fresh(), $trx);
+
+            // Manager otomatis untuk pembeli (DECISIONS #49).
+            // Dipanggil untuk SEMUA jenis transaksi, bukan hanya upgrade: sejak
+            // PRD v3.0 RO juga memberi PA, jadi RO bisa memenuhi syarat Manager.
+            $this->promoteIfQualified($buyer->fresh(), $trx);
 
             // Poin untuk sponsor langsung: join = PA + PR, RO/upgrade = PR saja.
             $sponsor = $buyer->sponsor;
             if ($sponsor !== null) {
                 $kinds = $type === 'join' ? ['pa', 'pr'] : ['pr'];
                 $this->addPoints($sponsor, $kinds, (int) $pin->points, $trx);
+
+                // PR yang baru masuk bisa membuat sponsor naik peringkat.
+                $this->promoteByPr($sponsor->fresh(), $trx);
                 $this->promoteIfQualified($sponsor->fresh(), $trx);
             }
 
@@ -200,9 +213,9 @@ class TransactionPoster
 
             $trx->update(['sponsor_bonus_total' => $total]);
 
-            // Poin leadership (BUSINESS_RULES.md §4, DECISIONS #62): sebesar poin
-            // transaksi, ke setiap upline sampai Manager pertama, lalu berhenti.
-            $this->awardLeadership($buyer, (int) $pin->points, $trx);
+            // Poin leadership (PRD v3.0 §3.8, DECISIONS #62): hanya Manager yang
+            // menerima, dan Manager yang RO sendiri ikut menerima.
+            $this->awardLeadership($buyer, (int) $pin->points, $trx, $type);
 
             // Hadiah milestone dinilai dari total PR (BUSINESS_RULES.md §8), dan PR
             // termasuk RO pribadi (§7). Pembeli menilai tangganya sendiri, sponsor
@@ -234,42 +247,70 @@ class TransactionPoster
     }
 
     /**
-     * Poin leadership (BUSINESS_RULES.md §4, DECISIONS #62).
+     * Poin leadership (PRD v3.0 §3.8, koreksi Owner 2 Nov).
      *
-     * Sebesar poin transaksi, diberikan ke upline level 1, 2, 3, … sampai dan
-     * termasuk Manager pertama, lalu berhenti (kompresi). Kalau pembelinya sendiri
-     * sudah Manager, tidak ada yang dapat — hak dari struktur itu sudah tertutup.
+     * Aturan:
+     *  - Hanya Manager yang menerima PL. Non-Manager TIDAK dicatat sama sekali
+     *    (hangus, tidak ditabung) — dulu PL dicatat untuk siapa pun.
+     *  - Manager yang melakukan RO sendiri juga menerima PL dari transaksinya.
+     *  - PL mengalir ke upline sampai Manager pertama, lalu berhenti (kompresi #62).
      */
-    private function awardLeadership(Member $buyer, int $points, Transaction $trx): void
+    private function awardLeadership(Member $buyer, int $points, Transaction $trx, string $type): void
     {
-        if ($points <= 0 || $buyer->rank === 'manager') {
+        if ($points <= 0) {
+            return;
+        }
+
+        $maxLevel = (int) config('sahih.leadership_chain_max_level', 50);
+        $sudahDapat = [];
+
+        // Pembeli sendiri: hanya kalau dia Manager DAN transaksinya RO.
+        if ($type === 'ro' && $buyer->is_manager) {
+            $this->catatLeadership($buyer, $points, $trx, 'RO pribadi Manager');
+            $sudahDapat[$buyer->id] = true;
+        }
+
+        // Kompresi (DECISIONS #62): begitu anggota di bawah sudah Manager, hak
+        // leadership dari struktur itu berhenti. Jadi kalau pembelinya sendiri
+        // Manager, upline tidak dapat apa-apa — tapi pembeli tetap dapat PL dari
+        // RO pribadinya (koreksi Owner 2 Nov).
+        if ($buyer->rank === 'manager') {
             return;
         }
 
         $cursor = $buyer->sponsor;
         $level = 0;
 
-        while ($cursor !== null && $level < 20) {
+        while ($cursor !== null && $level < $maxLevel) {
             $level++;
 
-            PointEntry::create([
-                'member_id' => $cursor->id,
-                'kind' => 'pl',
-                'delta' => $points,
-                'source_type' => 'transaction',
-                'source_id' => $trx->id,
-                'note' => "Poin leadership level {$level} dari transaksi {$trx->code}",
-            ]);
+            // Non-Manager dilewati: poinnya hangus, tidak dicatat (PRD v3.0 §3.8).
+            // Dia juga tidak memutus rantai — rantai berhenti hanya di Manager.
+            if ($cursor->is_manager && ! isset($sudahDapat[$cursor->id])) {
+                $this->catatLeadership($cursor, $points, $trx, "level {$level}");
+                $sudahDapat[$cursor->id] = true;
 
-            $cursor->point_pl = (int) $cursor->point_pl + $points;
-            $cursor->save();
-
-            if ($cursor->rank === 'manager') {
                 break;   // Manager pertama: hak dari struktur ini berhenti di sini
             }
 
             $cursor = $cursor->sponsor;
         }
+    }
+
+    /** Satu baris poin leadership untuk seorang Manager. */
+    private function catatLeadership(Member $member, int $points, Transaction $trx, string $asal): void
+    {
+        PointEntry::create([
+            'member_id' => $member->id,
+            'kind' => 'pl',
+            'delta' => $points,
+            'source_type' => 'transaction',
+            'source_id' => $trx->id,
+            'note' => "Poin leadership {$asal} dari transaksi {$trx->code}",
+        ]);
+
+        $member->point_pl = (int) $member->point_pl + $points;
+        $member->save();
     }
 
     private function addPoints(Member $member, array $kinds, int $points, Transaction $trx): void
@@ -310,6 +351,39 @@ class TransactionPoster
         ]);
     }
 
+    /**
+     * Naik peringkat otomatis dari total PR (PRD v3.0 §3.3).
+     *
+     * Ambang: 1 PR = Reseller, 3 PR = Agent, 6 PR = Distributor. PR dihitung
+     * dari ledger, termasuk PR yang datang dari anggota yang kita sponsori.
+     * Manager tidak lewat jalur ini — syaratnya Distributor + 20 PA.
+     */
+    private function promoteByPr(Member $member, Transaction $trx): void
+    {
+        if ($member->rank === 'manager') {
+            return;   // Manager tidak turun dan tidak naik lagi lewat PR
+        }
+
+        $pr = $member->pointTotal('pr');
+        $seharusnya = $member->rankForPr($pr);
+
+        if ($this->ranks->weight($seharusnya) <= $this->ranks->weight($member->rank)) {
+            return;   // belum cukup, atau peringkat sekarang sudah lebih tinggi
+        }
+
+        $from = $member->rank;
+        $member->rank = $seharusnya;
+        $member->save();
+
+        RankHistory::create([
+            'member_id' => $member->id,
+            'from_rank' => $from,
+            'to_rank' => $seharusnya,
+            'transaction_id' => $trx->id,
+            'note' => "Otomatis: total PR mencapai {$pr}",
+        ]);
+    }
+
     /** Manager otomatis: sudah Distributor + 20 poin PA (DECISIONS #49). */
     private function promoteIfQualified(Member $member, Transaction $trx): void
     {
@@ -327,7 +401,7 @@ class TransactionPoster
             return;
         }
 
-        if ($member->pointTotal('pa') < (int) config('sahih.manager_min_pa')) {
+        if ($member->pointTotal('pa') < $this->harga->ambil('syarat_manager_pa')) {
             return;
         }
 

@@ -1,6 +1,6 @@
 <?php
 
-// Semua angka di sini berasal dari BUSINESS_RULES.md. Kalau aturan berubah,
+// Semua angka di sini berasal dari PRD v3.0 (2 Nov 2026). Kalau aturan berubah,
 // ubah di sini dan di dokumen — bukan di dalam kode lain.
 return [
     // Tarif bonus sponsor per peringkat, dalam basis point (1500 = 15%).
@@ -14,11 +14,28 @@ return [
     // Batas total bonus sponsor per transaksi: 20%.
     'sponsor_cap_bp' => 2000,
 
+    // Rantai upline untuk bonus sponsor (DECISIONS #60, PRD v3.0 §3.4):
+    // dinaikkan dari 20 ke 50 tingkat atas permintaan Owner.
+    // Kalau dalam 50 tingkat tidak ada peringkat lebih tinggi, sisa selisih hangus.
+    'sponsor_chain_max_level' => 50,
+
+    // Rantai upline untuk poin leadership. Kompresi berhenti di Manager pertama,
+    // jadi 50 sudah lebih dari cukup.
+    'leadership_chain_max_level' => 50,
+
     // Peringkat yang didapat dari jumlah poin yang dibeli saat mendaftar.
     'rank_by_points' => [
         1 => 'reseller',
         3 => 'agent',
         6 => 'distributor',
+    ],
+
+    // Ambang PR untuk naik peringkat otomatis (PRD v3.0 §3.3).
+    // Total PR — termasuk PR dari anggota yang kita sponsori — menentukan peringkat.
+    'rank_by_pr' => [
+        'reseller'    => 1,
+        'agent'       => 3,
+        'distributor' => 6,
     ],
 
     // Syarat jadi Manager: sudah Distributor + 20 poin PA.
@@ -27,10 +44,10 @@ return [
     // Minimum penarikan.
     'withdraw_min' => 100000,
 
-    // Harga PIN repeat order (RO) per poin mengikat (DECISIONS #56).
+    // Harga PIN repeat order (RO) per pin. Bisa diubah Owner (DECISIONS #56).
     'ro_price_per_point' => 500000,
 
-    // Harga poin paket pendaftaran (BUSINESS_RULES.md §1–§2): 1 poin Rp 600.000.
+    // Harga PIN registrasi / upgrade per pin. Bisa diubah Owner (PRD v3.0 §4).
     'registration_price_per_point' => 600000,
 
     // Poin paket per peringkat. Dipakai menghitung harga PIN upgrade (DECISIONS #59).
@@ -46,4 +63,10 @@ return [
     // Tidak mengikuti ambang tertinggi yang sedang aktif: mematikan hadiah 3.500
     // tidak boleh mengubah hitungan hadiah anggota.
     'milestone_cycle_points' => 3500,
+
+    // Nilai rupiah per poin leadership — internal, tidak ditampilkan ke anggota.
+    'leadership_value_per_point' => 40000,
+
+    // Nilai 1 poin sebagai satuan hitung. Internal, tidak ditampilkan ke anggota.
+    'point_unit_value' => 50000,
 ];

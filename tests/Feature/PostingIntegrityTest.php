@@ -70,13 +70,18 @@ it('pendaftaran mencatat poin PA dan PR ke sponsor langsung', function () {
         ->and($sponsor->fresh()->point_pr)->toBe(3);
 });
 
-it('RO hanya menambah PR, peringkat pembeli tidak berubah', function () {
+it('RO menambah PR dan PA pembeli, serta menaikkan peringkat dari total PR', function () {
     $sponsor = member('reseller');
     $buyer = member('reseller', $sponsor);
 
+    // PRD v3.0 §3.5: RO memberi PR + PA ke pembeli (koreksi Owner 2 Nov, #65).
+    // §3.3: 10 PR melewati ambang Distributor (6 PR), jadi peringkat naik otomatis.
     app(TransactionPoster::class)->post($buyer, pin('ro', 10, 5000000)->id, 'ro');
 
-    expect($buyer->fresh()->rank)->toBe('reseller')
+    expect($buyer->fresh()->rank)->toBe('distributor')
+        ->and($buyer->fresh()->pointTotal('pr'))->toBe(10)
+        ->and($buyer->fresh()->pointTotal('pa'))->toBe(10)
+        // Sponsor hanya dapat PR dari RO, tidak dapat PA.
         ->and((int) PointEntry::where('member_id', $sponsor->id)->where('kind', 'pr')->sum('delta'))->toBe(10)
         ->and((int) PointEntry::where('member_id', $sponsor->id)->where('kind', 'pa')->sum('delta'))->toBe(0);
 });
