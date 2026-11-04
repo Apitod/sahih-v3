@@ -317,3 +317,21 @@ it('jejak audit PIN gabungan mencatat peringkat tujuan', function () {
     expect($log->after['type'])->toBe('registrasi_upgrade')
         ->and($log->after['target_rank'])->toBe('agent');
 });
+
+it('panel menolak PIN naik peringkat 0 pin — tidak boleh terbit PIN yang pasti mati', function () {
+    $anggota = member('reseller');
+
+    $this->actingAs(adminGabungan(), 'admin')
+        ->post('/admin/pin', [
+            'type' => 'registrasi_upgrade',
+            'target_rank' => 'agent',
+            'points' => 0,
+            'price' => 0,
+            'quantity' => 1,
+            'username' => $anggota->username,
+            'username_confirmation' => $anggota->username,
+        ])
+        ->assertSessionHasErrors('points');
+
+    expect(\App\Models\Pin::count())->toBe(0);
+});

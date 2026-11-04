@@ -202,6 +202,15 @@ class PinController extends Controller
                 ]);
             }
 
+            // PIN naik peringkat harus berisi minimal 1 pin. PIN 0 pin hanya bisa
+            // lahir lewat data lama yang salah; panel tidak boleh menerbitkannya
+            // lagi, karena pasti ditolak saat dipakai (ada uji penjaganya).
+            if ($target !== null && $points < 1) {
+                return back()->withInput()->withErrors([
+                    'points' => 'PIN naik peringkat harus berisi minimal 1 pin.',
+                ]);
+            }
+
             $expectedPrice = $points * $harga->ambil('harga_pin_registrasi');
 
             if ((int) $data['price'] !== $expectedPrice) {
