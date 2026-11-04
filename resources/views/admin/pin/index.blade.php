@@ -57,7 +57,7 @@
             <span class="text-tinta/60">Jenis</span>
             <select name="type" class="rounded-kartu border border-garis bg-kertas px-3 py-1.5">
                 <option value="">semua</option>
-                @foreach (['registration' => 'registrasi', 'upgrade' => 'upgrade', 'ro' => 'repeat order'] as $nilai => $label)
+                @foreach (['registrasi_upgrade' => 'registrasi / naik peringkat', 'ro' => 'repeat order'] as $nilai => $label)
                     <option value="{{ $nilai }}" @selected(($filter['type'] ?? '') === $nilai)>{{ $label }}</option>
                 @endforeach
             </select>
@@ -86,10 +86,10 @@
                         <tr>
                             <td class="px-4 py-2 font-mono text-xs tracking-wider">{{ $pin->code }}</td>
                             <td class="px-4 py-2">
-                                {{ match ($pin->type) {
-                                    'registration' => 'registrasi',
-                                    'upgrade' => 'upgrade → '.($pin->target_rank ? ucfirst($pin->target_rank) : '?'),
-                                    'ro' => 'repeat order',
+                                {{ match (true) {
+                                    $pin->isRo() => 'repeat order',
+                                    $pin->untukUpgrade() => 'naik peringkat → '.($pin->target_rank ? ucfirst($pin->target_rank) : '?'),
+                                    $pin->untukPendaftaran() => 'pendaftaran',
                                     default => $pin->type,
                                 } }}
                             </td>

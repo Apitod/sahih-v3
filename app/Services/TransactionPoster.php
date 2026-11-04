@@ -53,14 +53,26 @@ class TransactionPoster
                 throw new \RuntimeException("PIN {$pin->code} bukan untuk akun ini.");
             }
 
-            // Penjaga jenis: jenis PIN harus cocok dengan jenis transaksi.
-            $expectedTypes = [
-                'registration' => 'join',
-                'upgrade' => 'upgrade',
-                'ro' => 'ro',
-            ];
-            if (($expectedTypes[$pin->type] ?? null) !== $type) {
-                throw new \RuntimeException("Jenis PIN {$pin->type} tidak cocok untuk transaksi {$type}.");
+            // Penjaga jenis (DECISIONS #73): satu PIN gabungan bisa dipakai untuk dua
+            // jalur, jadi pemetaannya tidak lagi satu-ke-satu. Jalurnya ditentukan
+            // target_rank, bukan nama jenis:
+            //   registrasi_upgrade + target_rank kosong  → join
+            //   registrasi_upgrade + target_rank terisi  → upgrade
+            //   ro                                       → ro
+            // Jenis di luar dua itu (sisa data lama `registration`/`upgrade`) ditolak.
+            if (! $pin->jenisSah()) {
+                throw new \RuntimeException("Jenis PIN {$pin->code} tidak dikenal: {$pin->type}.");
+            }
+
+            $cocok = match ($type) {
+                'join' => $pin->untukPendaftaran(),
+                'upgrade' => $pin->untukUpgrade(),
+                'ro' => $pin->isRo(),
+                default => false,
+            };
+
+            if (! $cocok) {
+                throw new \RuntimeException("PIN {$pin->code} tidak bisa dipakai untuk transaksi {$type}.");
             }
 
             // Penjaga harga RO (DECISIONS #56): harga per pin, diperiksa lagi saat
@@ -90,6 +102,21 @@ class TransactionPoster
                 }
             }
 
+            // Penjaga PIN naik peringkat: jumlah pin harus lebih dari nol, dan harganya
+            // harus jumlah pin × harga per pin. PIN 0 pin seharga berapa pun tidak sah
+            // (DECISIONS #73: harga dihitung per pin, bukan "selisih paket" lagi).
+            if ($type === 'upgrade') {
+                if ((int) $pin->points <= 0) {
+                    throw new \RuntimeException("PIN {$pin->code} berisi 0 pin — tidak bisa dipakai untuk naik peringkat.");
+                }
+
+                $expectedPrice = (int) $pin->points * $this->harga->ambil('harga_pin_registrasi');
+
+                if ((int) $pin->price !== $expectedPrice) {
+                    throw new \RuntimeException("Harga PIN {$pin->code} tidak sesuai untuk naik peringkat {$pin->points} pin.");
+                }
+            }
+
             // Penjaga arah peringkat: upgrade tidak boleh ke peringkat sama atau lebih rendah (keputusan #55).
             if ($type === 'upgrade') {
                 if ($pin->target_rank === null) {
@@ -103,15 +130,6 @@ class TransactionPoster
 
                 if ($this->ranks->weight($pin->target_rank) <= $this->ranks->weight($buyer->rank)) {
                     throw new \RuntimeException("PIN upgrade ke peringkat {$pin->target_rank} ditolak untuk akun yang sudah {$buyer->rank}.");
-                }
-
-                // Harga PIN upgrade = harga paket tujuan − harga paket sekarang (DECISIONS #59).
-                // Diperiksa lagi di sini supaya PIN yang terbit sebelum peringkat pembeli
-                // berubah tidak dipakai dengan harga lama.
-                $expectedPrice = $this->packagePrice->upgradePrice($buyer->rank, $pin->target_rank);
-
-                if ((int) $pin->price !== $expectedPrice) {
-                    throw new \RuntimeException("Harga PIN {$pin->code} tidak sesuai untuk upgrade {$buyer->rank} ke {$pin->target_rank}.");
                 }
             }
 

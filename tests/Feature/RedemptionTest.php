@@ -68,20 +68,24 @@ it('PIN yang dititipkan ke anggota lain ditolak', function () {
         ->and(Transaction::count())->toBe(0);
 });
 
-it('PIN registrasi tidak bisa dipakai anggota yang sudah terdaftar', function () {
+it('PIN pendaftaran tidak bisa dipakai anggota yang sudah terdaftar', function () {
     $anggota = member('reseller');
-    $kode = pin('registration', 1, 600000);
+    // PIN gabungan tanpa peringkat tujuan = PIN pendaftaran, ditolak di halaman tukar.
+    $kode = pin('registrasi_upgrade', 1, 600000);
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
         ->assertSessionHasErrors('code');
 
-    expect($kode->fresh()->status)->toBe('issued');
+    expect($kode->fresh()->status)->toBe('issued')
+        ->and(Transaction::count())->toBe(0);
 });
 
-it('PIN upgrade menaikkan peringkat anggota', function () {
+it('PIN naik peringkat menaikkan peringkat anggota', function () {
     $anggota = member('reseller');
-    $kode = pin('upgrade', 0, 3000000, 'distributor');
+    // Reseller -> Distributor = 5 pin x Rp 600.000 (DECISIONS #73).
+    $kode = pin('registrasi_upgrade', 5, 3000000, 'distributor');
+    $kode->update(['assigned_member_id' => $anggota->id]);
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
@@ -91,9 +95,9 @@ it('PIN upgrade menaikkan peringkat anggota', function () {
         ->and(Transaction::first()->type)->toBe('upgrade');
 });
 
-it('PIN upgrade ke peringkat yang sudah dilewati ditolak dan PIN tetap utuh', function () {
+it('PIN naik peringkat ke peringkat yang sudah dilewati ditolak dan PIN tetap utuh', function () {
     $anggota = member('distributor');
-    $kode = pin('upgrade', 0, 1800000, 'agent');
+    $kode = pin('registrasi_upgrade', 2, 1200000, 'agent');
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
@@ -104,15 +108,15 @@ it('PIN upgrade ke peringkat yang sudah dilewati ditolak dan PIN tetap utuh', fu
         ->and(Transaction::count())->toBe(0);
 });
 
-it('PIN upgrade tanpa peringkat tujuan ditolak', function () {
+it('PIN gabungan tanpa peringkat tujuan ditolak saat dipakai sebagai naik peringkat', function () {
     $anggota = member('reseller');
-    $kode = pin('upgrade', 0, 3000000, null);
-
+    $kode = pin('registrasi_upgrade', 5, 3000000, null);
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
         ->assertSessionHasErrors('code');
 
-    expect($kode->fresh()->status)->toBe('issued');
+    expect($kode->fresh()->status)->toBe('issued')
+        ->and(Transaction::count())->toBe(0);
 });
 
 it('kode yang tidak dikenal ditolak dengan pesan jelas', function () {
@@ -179,7 +183,7 @@ it('bonus sponsor tercatat saat PIN join dipakai', function () {
     $sponsor = member('distributor');
 
     // Buat anggota baru lewat PIN registrasi (join).
-    $kode = pin('registration', 3, 1800000);
+    $kode = pin('registrasi_upgrade', 3, 1800000);
     $anggota = member('reseller', $sponsor);
 
     // Simulasikan join langsung lewat service.
@@ -193,7 +197,7 @@ it('bonus sponsor tercatat saat PIN join dipakai', function () {
 
 it('pembeli mendapat PR dari PIN join tanpa PA pribadi', function () {
     $anggota = member();
-    $kode = pin('registration', 3, 1800000);
+    $kode = pin('registrasi_upgrade', 3, 1800000);
 
     app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'join');
 
@@ -201,14 +205,14 @@ it('pembeli mendapat PR dari PIN join tanpa PA pribadi', function () {
         ->and($anggota->fresh()->pointTotal('pa'))->toBe(0);
 });
 
-it('pembeli mendapat PR dari PIN upgrade tanpa PA pribadi', function () {
+it('pembeli mendapat PR dari PIN naik peringkat tanpa PA pribadi', function () {
     $anggota = member('reseller');
-    // Reseller -> Agent = Rp 1.200.000 (DECISIONS #59).
-    $kode = pin('upgrade', 3, 1200000, 'agent');
+    // Reseller -> Agent = 2 pin x Rp 600.000 = Rp 1.200.000 (DECISIONS #73).
+    $kode = pin('registrasi_upgrade', 2, 1200000, 'agent');
 
     app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'upgrade');
 
-    expect($anggota->fresh()->pointTotal('pr'))->toBe(3)
+    expect($anggota->fresh()->pointTotal('pr'))->toBe(2)
         ->and($anggota->fresh()->pointTotal('pa'))->toBe(0);
 });
 
@@ -223,13 +227,28 @@ it('pembeli mendapat PR dan PA dari PIN RO', function () {
         ->and($anggota->fresh()->pointTotal('pa'))->toBe(3);
 });
 
-it('pembeli otomatis menjadi Manager saat upgrade ke Distributor dan PA cukup', function () {
+it('pembeli otomatis menjadi Manager saat naik ke Distributor dan PA cukup', function () {
     $anggota = member('agent');
     givePoints($anggota, 'pa', 20);
-    $kode = pin('upgrade', 0, 1800000, 'distributor');
+    // Agent -> Distributor = 3 pin x Rp 600.000 = Rp 1.800.000.
+    $kode = pin('registrasi_upgrade', 3, 1800000, 'distributor');
 
     app(\App\Services\TransactionPoster::class)->post($anggota, $kode->id, 'upgrade');
 
     expect($anggota->fresh()->rank)->toBe('manager')
         ->and($anggota->fresh()->is_manager)->toBeTrue();
+});
+
+it('PIN naik peringkat tanpa pemilik tidak bisa ditebus siapa pun (J1 audit)', function () {
+    $penyusup = member('reseller');
+    // PIN naik peringkat yang tidak diikat ke siapa pun (teringat oleh data lama).
+    $kode = pin('registrasi_upgrade', 2, 1200000, 'agent');
+
+    $this->actingAs($penyusup, 'web')
+        ->post('/tukar', ['code' => $kode->code])
+        ->assertSessionHasErrors('code');
+
+    expect($kode->fresh()->status)->toBe('issued')
+        ->and($penyusup->fresh()->rank)->toBe('reseller')
+        ->and(Transaction::count())->toBe(0);
 });

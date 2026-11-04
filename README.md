@@ -44,13 +44,21 @@ Aplikasi punya dua jenis pengguna dengan area terpisah:
 ### Area Admin
 - **Dashboard** — jumlah anggota, jumlah PIN belum dipakai, jumlah transaksi, 8 transaksi terakhir.
 - **Kelola PIN**
-  - Terbitkan PIN tipe `registration`, `upgrade`, atau `ro` (1–50 sekaligus).
+  - Terbitkan PIN dengan dua jenis: `registrasi_upgrade` dan `ro` (1–50 sekaligus).
+    Satu PIN `registrasi_upgrade` bisa dipakai untuk **mendaftarkan anggota baru**
+    (tanpa peringkat tujuan) atau **menaikkan peringkat** (dengan peringkat tujuan).
+  - **Username wajib diketik dua kali** saat menerbitkan PIN, supaya tidak salah pemegang
+    (PIN salah pemegang = salah harga). Username yang belum terdaftar hanya boleh untuk
+    PIN pendaftaran; untuk naik peringkat anggotanya harus sudah punya akun.
   - Kode 12 karakter memakai alfabet tanpa huruf ambigu (`O/0`, `I/1`, `L`) agar bisa dibacakan lewat telepon.
-  - Validasi harga otomatis:
-    - PIN **registrasi** hanya untuk paket 1 / 3 / 6 poin, harga = poin × Rp 600.000.
-    - PIN **RO** harga = poin × Rp 500.000.
-    - PIN **upgrade** harga = harga paket tujuan − harga paket sekarang, wajib menyebut pemegangnya.
+  - **Harga dihitung sistem, bukan diketik admin** (angka per pin dari `/admin/pengaturan`):
+    - PIN `registrasi_upgrade` = jumlah pin × Rp 600.000.
+    - PIN `ro` = jumlah pin × Rp 500.000.
+    - Harga yang tidak sesuai hitungan ditolak, baik saat PIN dibuat maupun saat dipakai.
   - **Batalkan (void)** PIN yang belum dipakai, dengan alasan wajib.
+  - **PIN pendaftaran** (tanpa peringkat tujuan) dijual untuk mendaftarkan anggota baru.
+    Alur registrasi anggota lewat web belum dibangun — status `belum sampai tahap itu`.
+    PIN-nya tetap sah dan tidak kedaluwarsa, dipakai begitu alurnya ada.
 - Semua aksi admin tercatat di tabel `audit_logs` (aktor, aksi, before/after, IP).
 
 ### Domain / Aturan Bisnis

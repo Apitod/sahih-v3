@@ -18,19 +18,25 @@ function adminUji(): Admin
 
 function kirimPin(array $ganti = []): \Illuminate\Testing\TestResponse
 {
+    // Form admin meminta username pemegang diketik dua kali (Owner: "berikan 2 kali
+    // verifikasi ketika mau buat pin"). Nilai bawaan di sini kosong = PIN tanpa pemegang,
+    // sama seperti PIN RO yang dijual bebas.
     return test()->actingAs(adminUji(), 'admin')->post('/admin/pin', array_merge([
-        'type' => 'registration',
+        'type' => 'registrasi_upgrade',
         'points' => 1,
         'price' => 600000,
         'quantity' => 1,
+        'username' => '',
+        'username_confirmation' => '',
     ], $ganti));
 }
 
-it('admin membuat PIN registrasi', function () {
+it('admin membuat PIN registrasi/upgrade untuk mendaftar', function () {
     kirimPin()->assertRedirect('/admin/pin');
 
     $pin = Pin::first();
-    expect($pin->type)->toBe('registration')
+    expect($pin->type)->toBe('registrasi_upgrade')
+        ->and($pin->target_rank)->toBeNull()
         ->and($pin->points)->toBe(1)
         ->and($pin->price)->toBe(600000)
         ->and($pin->status)->toBe('issued')
@@ -39,7 +45,10 @@ it('admin membuat PIN registrasi', function () {
 });
 
 it('kode PIN tidak memakai huruf yang mudah tertukar', function () {
-    kirimPin(['quantity' => 20]);
+    kirimPin(['quantity' => 20])->assertRedirect('/admin/pin');
+
+    // Tanpa asersi jumlah, uji ini akan "lulus" diam-diam kalau tidak ada PIN terbuat.
+    expect(Pin::count())->toBe(20);
 
     foreach (Pin::pluck('code') as $kode) {
         expect($kode)->not->toMatch('/[O0I1L]/');
@@ -53,73 +62,103 @@ it('permintaan banyak kode menghasilkan kode berbeda semua', function () {
         ->and(Pin::distinct()->count('code'))->toBe(5);
 });
 
-it('PIN upgrade wajib menyebut peringkat tujuan', function () {
-    kirimPin(['type' => 'upgrade', 'target_rank' => ''])
+it('PIN gabungan tanpa peringkat tujuan tersimpan sebagai PIN pendaftaran', function () {
+    kirimPin(['type' => 'registrasi_upgrade', 'target_rank' => ''])->assertRedirect('/admin/pin');
+
+    $pin = Pin::sole();
+    expect($pin->target_rank)->toBeNull()
+        ->and($pin->untukPendaftaran())->toBeTrue()
+        ->and($pin->untukUpgrade())->toBeFalse();
+});
+
+it('peringkat tujuan di luar daftar ditolak', function () {
+    kirimPin(['type' => 'registrasi_upgrade', 'target_rank' => 'direktur'])
         ->assertSessionHasErrors('target_rank');
 
     expect(Pin::count())->toBe(0);
 });
 
-it('PIN upgrade menyimpan peringkat tujuan', function () {
+it('PIN naik peringkat menyimpan peringkat tujuan', function () {
     $anggota = member('reseller');
 
-    // Reseller -> Distributor = Rp 3.000.000 - Rp 600.000 (DECISIONS #59).
+    // Reseller -> Distributor = 5 pin x Rp 600.000 (DECISIONS #73, per pin).
     kirimPin([
-        'type' => 'upgrade',
+        'type' => 'registrasi_upgrade',
         'target_rank' => 'distributor',
-        'points' => 0,
+        'points' => 5,
         'price' => 3000000,
         'username' => $anggota->username,
+        'username_confirmation' => $anggota->username,
     ])->assertRedirect('/admin/pin');
 
-    expect(Pin::first()->target_rank)->toBe('distributor');
+    expect(Pin::first()->target_rank)->toBe('distributor')
+        ->and(Pin::first()->untukUpgrade())->toBeTrue();
 });
 
-it('PIN upgrade ke Manager ditolak saat dibuat (DECISIONS #58)', function () {
+it('PIN naik peringkat ke Manager ditolak saat dibuat (DECISIONS #58)', function () {
     $anggota = member('distributor');
 
     kirimPin([
-        'type' => 'upgrade',
+        'type' => 'registrasi_upgrade',
         'target_rank' => 'manager',
         'points' => 0,
         'price' => 0,
         'username' => $anggota->username,
+        'username_confirmation' => $anggota->username,
     ])->assertSessionHasErrors('target_rank');
 
     expect(Pin::count())->toBe(0);
 });
 
-it('PIN upgrade tanpa pemegang ditolak karena harganya tidak bisa dihitung', function () {
-    kirimPin(['type' => 'upgrade', 'target_rank' => 'agent', 'points' => 0, 'price' => 1200000])
+it('PIN naik peringkat tanpa pemegang ditolak karena harganya tidak bisa dihitung', function () {
+    kirimPin(['type' => 'registrasi_upgrade', 'target_rank' => 'agent', 'points' => 2, 'price' => 1200000])
         ->assertSessionHasErrors('username');
 
     expect(Pin::count())->toBe(0);
 });
 
-it('PIN upgrade dengan harga bukan selisih paket ditolak', function () {
+it('PIN naik peringkat dengan harga bukan Rp 600.000 x jumlah pin ditolak', function () {
     $anggota = member('reseller');
 
+    // Reseller -> Agent = 2 pin = Rp 1.200.000, bukan Rp 1.800.000.
     kirimPin([
-        'type' => 'upgrade',
+        'type' => 'registrasi_upgrade',
         'target_rank' => 'agent',
-        'points' => 0,
+        'points' => 2,
         'price' => 1800000,
         'username' => $anggota->username,
+        'username_confirmation' => $anggota->username,
     ])->assertSessionHasErrors('price');
 
     expect(Pin::count())->toBe(0);
 });
 
-it('PIN registrasi tidak menyimpan peringkat tujuan', function () {
-    kirimPin(['target_rank' => 'manager']);
+it('PIN pendaftaran tidak menyimpan peringkat tujuan', function () {
+    // PIN pendaftaran = tanpa peringkat tujuan. Dulu uji ini mengirim 'manager',
+    // padahal Manager memang tidak dijual (#58) — jadi yang diuji bukan lagi
+    // "pendaftaran mengabaikan target", melainkan "Manager ditolak". Sudah dipisah:
+    // penolakan Manager ada di ujinya sendiri di bawah.
+    kirimPin(['target_rank' => '']);
 
     expect(Pin::first()->target_rank)->toBeNull();
+});
+
+it('PIN pendaftaran dengan peringkat tujuan tanpa pemegang ditolak', function () {
+    // Peringkat tujuan hanya bermakna kalau PIN memang untuk naik peringkat, dan
+    // itu butuh pemegang supaya peringkat sekarangnya diketahui.
+    kirimPin(['target_rank' => 'agent', 'points' => 2, 'price' => 1200000])
+        ->assertSessionHasErrors('username');
+
+    expect(Pin::count())->toBe(0);
 });
 
 it('PIN bisa dititipkan ke anggota tertentu', function () {
     $member = member('reseller');
 
-    kirimPin(['username' => $member->username]);
+    kirimPin([
+        'username' => $member->username,
+        'username_confirmation' => $member->username,
+    ]);
 
     expect(Pin::first()->assigned_member_id)->toBe($member->id);
 });
@@ -127,7 +166,32 @@ it('PIN bisa dititipkan ke anggota tertentu', function () {
 it('PIN tidak bisa dititipkan ke anggota yang dibekukan', function () {
     $member = member('reseller', null, ['status' => 'suspended']);
 
-    kirimPin(['username' => $member->username])->assertSessionHasErrors('username');
+    kirimPin([
+        'username' => $member->username,
+        'username_confirmation' => $member->username,
+    ])->assertSessionHasErrors('username');
+
+    expect(Pin::count())->toBe(0);
+});
+
+it('username pemegang yang diketik dua kali berbeda ditolak', function () {
+    $member = member('reseller');
+
+    kirimPin([
+        'username' => $member->username,
+        'username_confirmation' => $member->username.'x',
+    ])->assertSessionHasErrors('username');
+
+    expect(Pin::count())->toBe(0);
+});
+
+it('username pemegang hanya diketik sekali ditolak', function () {
+    $member = member('reseller');
+
+    kirimPin([
+        'username' => $member->username,
+        'username_confirmation' => '',
+    ])->assertSessionHasErrors('username_confirmation');
 
     expect(Pin::count())->toBe(0);
 });

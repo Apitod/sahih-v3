@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Member;
 use App\Models\Pin;
-use App\Services\PackagePrice;
+use App\Services\PengaturanHarga;
 use App\Services\RankResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,10 +14,24 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
+/**
+ * Penerbitan PIN oleh admin.
+ *
+ * DECISIONS #73 (Owner 2 Nov): jenis PIN tinggal dua — `registrasi_upgrade` dan `ro`.
+ * Satu PIN gabungan bisa dipakai untuk dua jalur, dibedakan oleh `target_rank`:
+ *  - kosong  → mendaftarkan anggota baru (transaksi `join`)
+ *  - terisi  → menaikkan peringkat anggota lama (transaksi `upgrade`)
+ *
+ * Harga dihitung sistem dari PengaturanHarga, tidak diketik admin. Admin tidak
+ * bisa mengirim harga sendiri: kalau berbeda dari hitungan, permintaan ditolak.
+ */
 class PinController extends Controller
 {
     /** Huruf yang mudah tertukar (O/0, I/1, L) dibuang supaya PIN bisa dibacakan lewat telepon. */
     private const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+    /** Peringkat yang sah sebagai tujuan naik peringkat. Manager tidak dijual (#58). */
+    private const PERINGKAT_TUJUAN = ['reseller', 'agent', 'distributor', 'manager'];
 
     public function index(Request $request): View
     {
@@ -44,10 +58,9 @@ class PinController extends Controller
 
     public function create(): View
     {
-        $harga = app(\App\Services\PengaturanHarga::class);
+        $harga = app(PengaturanHarga::class);
 
         return view('admin.pin.create', [
-            // Manager tidak dijual (DECISIONS #58) — muncul otomatis setelah Distributor + 20 poin PA.
             'peringkat' => ['reseller' => 'Reseller', 'agent' => 'Agent', 'distributor' => 'Distributor'],
             // Harga per pin dari pengaturan, supaya Owner bisa mengubah tanpa sentuh kode.
             'hargaRegistrasi' => $harga->ambil('harga_pin_registrasi'),
@@ -58,104 +71,157 @@ class PinController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'type' => ['required', 'in:registration,upgrade,ro'],
+            'type' => ['required', 'in:'.implode(',', Pin::JENIS)],
             'points' => ['required', 'integer', 'min:0', 'max:1000'],
+            // Harga tetap diterima supaya PIN lama/klien lama tidak pecah, tapi
+            // nilainya WAJIB sama dengan hitungan sistem di bawah.
             'price' => ['required', 'integer', 'min:0', 'max:1000000000'],
-            'target_rank' => ['nullable', 'required_if:type,upgrade', 'in:reseller,agent,distributor,manager'],
+            'target_rank' => ['nullable', 'in:'.implode(',', self::PERINGKAT_TUJUAN)],
             'quantity' => ['required', 'integer', 'min:1', 'max:50'],
-            'username' => ['nullable', 'string', 'exists:members,username'],
+
+            // Verifikasi username dua kali (permintaan Owner). `username_confirmation`
+            // dibuat wajib hanya ketika `username` terisi, supaya tidak bisa dikosongkan
+            // begitu saja lewat jalur naik peringkat.
+            'username' => ['nullable', 'string', 'max:30', 'regex:/^[A-Za-z0-9._-]*$/'],
+            'username_confirmation' => ['nullable', 'string', 'max:30', 'required_with:username'],
         ], [
-            'target_rank.required_if' => 'PIN upgrade harus menyebut peringkat tujuan.',
+            'type.in' => 'Jenis PIN hanya ada dua: registrasi/upgrade, atau RO.',
+            'target_rank.in' => 'Peringkat tujuan tidak dikenal.',
+            'username_confirmation.required_with' => 'Ketik ulang username untuk memastikan tidak salah.',
         ]);
 
-        if ($data['type'] === 'ro') {
-            $expectedPrice = (int) $data['points'] * (int) config('sahih.ro_price_per_point');
-            if ((int) $data['price'] !== $expectedPrice) {
-                return back()->withInput()->withErrors([
-                    'price' => "PIN RO {$data['points']} poin harus Rp ".number_format($expectedPrice, 0, ',', '.').'.',
-                ]);
-            }
-        }
+        // ---------------------------------------------------------------- 1. username dua kali
+        $username = trim((string) ($data['username'] ?? ''));
+        $ulang = trim((string) ($data['username_confirmation'] ?? ''));
 
-        // PIN registrasi hanya untuk paket yang ada di BUSINESS_RULES.md §2.
-        // Paket lain tidak punya peringkat, jadi PIN-nya mustahil dipakai.
-        if ($data['type'] === 'registration') {
-            $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
-
-            if (! in_array((int) $data['points'], $paket, true)) {
-                return back()->withInput()->withErrors([
-                    'points' => 'PIN registrasi hanya untuk paket '.implode(', ', $paket).' poin.',
-                ]);
-            }
-
-            $expectedPrice = (int) $data['points'] * (int) config('sahih.registration_price_per_point');
-            if ((int) $data['price'] !== $expectedPrice) {
-                return back()->withInput()->withErrors([
-                    'price' => "PIN registrasi {$data['points']} poin harus Rp ".number_format($expectedPrice, 0, ',', '.').'.',
-                ]);
-            }
-        }
-
-        // Reseller adalah peringkat awal; tidak ada anggota yang bisa naik ke situ (#55).
-        if ($data['type'] === 'upgrade' && ($data['target_rank'] ?? null) === 'reseller') {
+        // Dua kolom harus sama. Kalau hanya satu yang diisi, yang kosong itu yang disalahkan,
+        // supaya pesan errornya menunjuk kolom yang perlu dilengkapi.
+        if ($username !== '' && $ulang === '') {
             return back()->withInput()->withErrors([
-                'target_rank' => 'PIN upgrade tidak bisa ke Reseller — Reseller adalah peringkat awal.',
+                'username_confirmation' => 'Ketik ulang username untuk memastikan tidak salah.',
             ]);
         }
 
-        // Manager tidak dijual sebagai PIN: Manager otomatis begitu Distributor + 20 poin PA (#58).
-        if ($data['type'] === 'upgrade' && ($data['target_rank'] ?? null) === 'manager') {
+        if ($username === '' && $ulang !== '') {
+            return back()->withInput()->withErrors([
+                'username' => 'Username belum diisi, padahal ketikan ulangnya ada.',
+            ]);
+        }
+
+        // Dua kolom harus sama. Bandingan dipakai case-insensitive (strcasecmp),
+        // karena pencarian username di database memakai kolasi ci pada MySQL/MariaDB
+        // (`utf8mb4_unicode_ci`). Kalau bandingannya case-sensitive, 'BudiSahih'
+        // vs 'budisahih' ditolak padahal keduanya menunjuk anggota yang sama.
+        if ($username !== '' && strcasecmp($username, $ulang) !== 0) {
+            return back()->withInput()->withErrors([
+                'username' => 'Username dan ketikan ulang tidak sama. Periksa lagi — PIN salah pemegang berarti salah harga.',
+            ]);
+        }
+
+        // ---------------------------------------------------------------- 2. siapa pemegangnya
+        $member = null;
+
+        if ($username !== '') {
+            $member = Member::where('username', $username)->first();
+
+            if ($member !== null && $member->status !== 'active') {
+                return back()->withInput()->withErrors(['username' => 'Anggota ini sedang dibekukan.']);
+            }
+        }
+
+        // ---------------------------------------------------------------- 3. jalur: daftar atau naik?
+        $target = ($data['target_rank'] ?? null) ?: null;
+
+        // Manager tidak dijual lewat PIN (#58).
+        if ($target === 'manager') {
             return back()->withInput()->withErrors([
                 'target_rank' => 'Manager tidak dijual lewat PIN — Manager otomatis setelah Distributor + 20 poin PA.',
             ]);
         }
 
-        $member = null;
-        if (! empty($data['username'])) {
-            $member = Member::where('username', $data['username'])->first();
-            if ($member->status !== 'active') {
-                return back()->withInput()->withErrors(['username' => 'Anggota ini sedang dibekukan.']);
-            }
+        // Reseller adalah peringkat awal; tidak ada anggota yang bisa naik ke situ (#55).
+        if ($target === 'reseller') {
+            return back()->withInput()->withErrors([
+                'target_rank' => 'PIN naik peringkat tidak bisa ke Reseller — Reseller adalah peringkat awal.',
+            ]);
         }
 
-        // Harga PIN upgrade = harga paket tujuan − harga paket sekarang (#59),
-        // jadi pemegangnya wajib diketahui saat PIN dibuat.
-        if ($data['type'] === 'upgrade') {
-            if ($member === null) {
-                return back()->withInput()->withErrors([
-                    'username' => 'PIN upgrade harus menyebut pemegangnya, supaya harga selisihnya bisa dihitung.',
-                ]);
-            }
+        // Peringkat tujuan hanya bermakna kalau PIN memang untuk naik peringkat, dan
+        // itu butuh pemegang yang SUDAH terdaftar: peringkat tujuan harus di atas
+        // peringkat sekarang. Kalau username diketik tapi tidak ada di database,
+        // admin salah ketik — ditolak, jangan sampai PIN terbit tanpa pemilik.
+        if ($target !== null && $member === null) {
+            $pesan = $username === ''
+                ? 'PIN naik peringkat harus menyebut pemegangnya, supaya peringkat tujuannya bisa diperiksa.'
+                : "Username \"{$username}\" belum terdaftar. Untuk naik peringkat, anggotanya harus sudah punya akun. Periksa lagi ejaannya.";
 
+            return back()->withInput()->withErrors(['username' => $pesan]);
+        }
+
+        // PIN pendaftaran yang username-nya diketik tapi sudah terdaftar: PIN tetap
+        // boleh terbit dan dititipkan ke anggota itu. Tidak ditolak — admin mungkin
+        // menyiapkan PIN untuk anggota lama yang akan didaftarkan ulang setelah
+        // akunnya bermasalah. Yang penting PIN-nya tidak bisa dipakai di /tukar
+        // (ditolak di PinRedemptionController), jadi tidak menimbulkan jalur ganda.
+
+        if ($target !== null && $member !== null) {
             $ranks = app(RankResolver::class);
-            $target = (string) $data['target_rank'];
 
             if ($ranks->weight($target) <= $ranks->weight($member->rank)) {
                 return back()->withInput()->withErrors([
-                    'target_rank' => "Anggota ini sudah {$member->rank}. PIN upgrade harus ke peringkat di atasnya.",
-                ]);
-            }
-
-            $harga = app(PackagePrice::class);
-            $expectedPrice = $harga->upgradePrice($member->rank, $target);
-
-            if ((int) $data['price'] !== $expectedPrice) {
-                return back()->withInput()->withErrors([
-                    'price' => 'PIN upgrade '.$member->rank.' → '.$target.' harus Rp '
-                        .number_format($expectedPrice, 0, ',', '.').' (harga paket '.$target.' dikurangi paket '.$member->rank.').',
+                    'target_rank' => "Anggota ini sudah {$member->rank}. PIN naik peringkat harus ke peringkat di atasnya.",
                 ]);
             }
         }
 
+        // ---------------------------------------------------------------- 4. harga dari sistem
+        $harga = app(PengaturanHarga::class);
+        $points = (int) $data['points'];
+
+        if ($data['type'] === Pin::JENIS_RO) {
+            $expectedPrice = $points * $harga->ambil('harga_pin_ro');
+
+            if ((int) $data['price'] !== $expectedPrice) {
+                return back()->withInput()->withErrors([
+                    'price' => "PIN RO {$points} poin harus Rp ".number_format($expectedPrice, 0, ',', '.').'.',
+                ]);
+            }
+        } else {
+            // PIN gabungan. Dua jalur dengan aturan jumlah pin berbeda:
+            //
+            //  - Pendaftaran (tanpa peringkat tujuan): jumlah pin HARUS salah satu
+            //    paket 1/3/6, karena peringkat anggota baru ditentukan dari situ.
+            //  - Naik peringkat (dengan peringkat tujuan): jumlah pin bebas, karena
+            //    peringkatnya sudah ditunjuk admin. Yang penting harganya = pin × harga.
+            //    Contoh: Reseller -> Distributor butuh 5 pin (6 - 1).
+            $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
+
+            if ($target === null && ! in_array($points, $paket, true)) {
+                return back()->withInput()->withErrors([
+                    'points' => 'Untuk PIN pendaftaran, jumlah pin harus salah satu paket: '.implode(', ', $paket).'.',
+                ]);
+            }
+
+            $expectedPrice = $points * $harga->ambil('harga_pin_registrasi');
+
+            if ((int) $data['price'] !== $expectedPrice) {
+                return back()->withInput()->withErrors([
+                    'price' => "PIN {$points} pin harus Rp ".number_format($expectedPrice, 0, ',', '.')
+                        .' ('.$points.' × Rp '.number_format($harga->ambil('harga_pin_registrasi'), 0, ',', '.').').',
+                ]);
+            }
+        }
+
+        // ---------------------------------------------------------------- 5. simpan
         $admin = Auth::guard('admin')->user();
         $dibuat = [];
 
-        DB::transaction(function () use ($data, $member, $admin, &$dibuat) {
+        DB::transaction(function () use ($data, $member, $target, $username, $admin, &$dibuat) {
             for ($i = 0; $i < (int) $data['quantity']; $i++) {
                 $pin = Pin::create([
                     'code' => $this->kodeUnik(),
                     'type' => $data['type'],
-                    'target_rank' => $data['type'] === 'upgrade' ? $data['target_rank'] : null,
+                    'target_rank' => $target,
                     'points' => (int) $data['points'],
                     'price' => (int) $data['price'],
                     'status' => 'issued',
@@ -169,7 +235,8 @@ class PinController extends Controller
                     'action' => 'pin.create',
                     'subject_type' => Pin::class,
                     'subject_id' => $pin->id,
-                    'after' => $pin->only(['code', 'type', 'target_rank', 'points', 'price', 'assigned_member_id']),
+                    'after' => $pin->only(['code', 'type', 'target_rank', 'points', 'price', 'assigned_member_id'])
+                        + ['username_diketik' => $username],
                     'ip' => request()->ip(),
                 ]);
 

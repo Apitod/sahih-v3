@@ -52,11 +52,12 @@ it('anggota kedua ditolak setelah anggota pertama memakai PIN yang sama', functi
         ->and($kode->fresh()->used_by_member_id)->toBe($a1->id);
 });
 
-// === Kasus 4: PIN upgrade tepat satu tingkat di atas ===
-it('PIN upgrade dari reseller ke agent berhasil naik satu tingkat', function () {
+// === Kasus 4: PIN naik peringkat tepat satu tingkat di atas ===
+it('PIN naik peringkat dari reseller ke agent berhasil naik satu tingkat', function () {
     $anggota = member('reseller');
-    // Reseller -> Agent = Rp 1.800.000 - Rp 600.000 (DECISIONS #59).
-    $kode = pin('upgrade', 0, 1200000, 'agent');
+    // Reseller -> Agent = 2 pin x Rp 600.000 (DECISIONS #73).
+    $kode = pin('registrasi_upgrade', 2, 1200000, 'agent');
+    $kode->update(['assigned_member_id' => $anggota->id]);
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
@@ -66,14 +67,14 @@ it('PIN upgrade dari reseller ke agent berhasil naik satu tingkat', function () 
         ->and(Transaction::first()->type)->toBe('upgrade');
 });
 
-// === Kasus 5: Manager memakai PIN upgrade ke Distributor — ditolak ===
+// === Kasus 5: Manager memakai PIN naik peringkat ke Distributor — ditolak ===
 // CATATAN: ini MENGUNCI perilaku sekarang, bukan aturan yang sudah diputuskan.
 // BUSINESS_RULES.md:163 bilang "member Manager yang memakai PIN ke Distributor tetap Manager",
 // yang bisa dibaca sebagai "transaksi tetap jalan". Keputusan Owner masih terbuka (Q7).
 // Kalau Owner memilih "tetap posting", uji ini harus dibalik.
-it('Manager tidak bisa pakai PIN upgrade ke Distributor', function () {
+it('Manager tidak bisa pakai PIN naik peringkat ke Distributor', function () {
     $anggota = member('manager');
-    $kode = pin('upgrade', 0, 3000000, 'distributor');
+    $kode = pin('registrasi_upgrade', 5, 3000000, 'distributor');
 
     $this->actingAs($anggota, 'web')
         ->post('/tukar', ['code' => $kode->code])
@@ -123,9 +124,10 @@ it('upline peringkat lebih rendah dari sponsor langsung dapat 0, selisih naik ke
     $mid = member('reseller', $top);
     $sponsor = member('agent', $mid);
     $pembeli = member('reseller', $sponsor);
-    // Pakai PIN upgrade (bukan RO) agar bonus sponsor tetap jalan.
-    // Reseller -> Agent = Rp 1.200.000 (DECISIONS #59), jadi bonus dihitung dari angka itu.
-    $kode = pin('upgrade', 1, 1200000, 'agent');
+    // Pakai PIN naik peringkat (bukan RO) agar bonus sponsor tetap jalan.
+    // Reseller -> Agent = 2 pin x Rp 600.000 = Rp 1.200.000 (DECISIONS #73), jadi bonus dihitung dari angka itu.
+    $kode = pin('registrasi_upgrade', 2, 1200000, 'agent');
+    $kode->update(['assigned_member_id' => $pembeli->id]);
 
     $this->actingAs($pembeli, 'web')->post('/tukar', ['code' => $kode->code]);
 

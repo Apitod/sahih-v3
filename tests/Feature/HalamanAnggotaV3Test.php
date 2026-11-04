@@ -62,7 +62,7 @@ it('cek bonus menampilkan level, persen, status, dan tanggal', function () {
     $sponsor = member('distributor');
     $anggota = member('reseller', $sponsor);
 
-    app(TransactionPoster::class)->post($anggota, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($anggota, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
 
     $bonus = BonusEntry::where('member_id', $sponsor->id)->firstOrFail();
     expect($bonus->percent_bp)->toBe(2000);   // Distributor 20%
@@ -80,7 +80,7 @@ it('cek bonus tidak menampilkan nominal rupiah', function () {
     $sponsor = member('distributor');
     $anggota = member('reseller', $sponsor);
 
-    app(TransactionPoster::class)->post($anggota, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($anggota, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
 
     // Bonus sponsor 20% x Rp 1.800.000 = Rp 360.000 — angka ini tidak boleh muncul.
     expect((int) BonusEntry::where('member_id', $sponsor->id)->sum('amount'))->toBe(360000);
@@ -111,7 +111,22 @@ it('halaman tukar menyebut dua jenis PIN saja', function () {
         ->get('/tukar')
         ->assertOk()
         ->assertSee('dua jenis PIN')
-        ->assertSee('PIN RO');
+        ->assertSee('PIN RO')
+        ->assertSee('PIN registrasi/upgrade')
+        // Jenis lama tidak boleh muncul sebagai pilihan terpisah. Diperiksa lewat
+        // kata yang memang ada di halaman, bukan string hantu yang tak pernah ada
+        // di repositori (asersi negatif terhadap string hantu selalu lulus).
+        ->assertDontSee('PIN upgrade peringkat,');
+});
+
+it('halaman tukar menjelaskan PIN gabungan dipakai untuk daftar dan naik peringkat', function () {
+    $a = member('reseller');
+
+    $this->actingAs($a, 'web')
+        ->get('/tukar')
+        ->assertOk()
+        // Satu jenis PIN menampung dua jalur (DECISIONS #73).
+        ->assertSee('registrasi/upgrade');
 });
 
 it('halaman tukar menjelaskan naik peringkat juga otomatis dari poin reward', function () {

@@ -18,7 +18,7 @@ it('rantai lengkap: Reseller 15% + Agent 3% + Distributor 2% = Rp 120.000', func
     $r = member('reseller', $a);
     $buyer = member('reseller', $r);
 
-    $trx = app(TransactionPoster::class)->post($buyer, pin('registration', 1, 600000)->id, 'join');
+    $trx = app(TransactionPoster::class)->post($buyer, pin('registrasi_upgrade', 1, 600000)->id, 'join');
 
     expect(bonusByLevel($trx->id))->toBe([1 => 90000, 2 => 18000, 3 => 12000])
         ->and($trx->sponsor_bonus_total)->toBe(120000);
@@ -35,7 +35,7 @@ it('peringkat tengah lebih rendah dilewati: Agent 18% + Reseller 0 + Distributor
     expect(array_column($allocations, 'amount'))->toBe([108000, 0, 12000]);
 
     // Ledger hanya mencatat uang yang benar-benar berpindah.
-    $trx = app(TransactionPoster::class)->post($buyer, pin('registration', 1, 600000)->id, 'join');
+    $trx = app(TransactionPoster::class)->post($buyer, pin('registrasi_upgrade', 1, 600000)->id, 'join');
     expect(bonusByLevel($trx->id))->toBe([1 => 108000, 3 => 12000])
         ->and($trx->sponsor_bonus_total)->toBe(120000);
 });
@@ -45,7 +45,7 @@ it('tidak ada peringkat lebih tinggi: Reseller 15% + Reseller 0 = Rp 90.000', fu
     $r1 = member('reseller', $r2);
     $buyer = member('reseller', $r1);
 
-    $trx = app(TransactionPoster::class)->post($buyer, pin('registration', 1, 600000)->id, 'join');
+    $trx = app(TransactionPoster::class)->post($buyer, pin('registrasi_upgrade', 1, 600000)->id, 'join');
 
     expect(bonusByLevel($trx->id))->toBe([1 => 90000])
         ->and($trx->sponsor_bonus_total)->toBe(90000);
@@ -59,7 +59,7 @@ it('Distributor mengajak Agent: Distributor 20% dari Rp 1.800.000 = Rp 360.000',
     $d = member('distributor');
     $buyer = member('reseller', $d);
 
-    $trx = app(TransactionPoster::class)->post($buyer, pin('registration', 3, 1800000)->id, 'join');
+    $trx = app(TransactionPoster::class)->post($buyer, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
 
     expect(bonusByLevel($trx->id))->toBe([1 => 360000])
         ->and($trx->sponsor_bonus_total)->toBe(360000);
@@ -84,7 +84,7 @@ it('total bonus tidak pernah melebihi 20% dari nilai transaksi', function () {
 it('rantai tanpa upline menghasilkan bonus Rp 0 dan tidak error', function () {
     $buyer = member('reseller');   // daftar tanpa kode referral
 
-    $trx = app(TransactionPoster::class)->post($buyer, pin('registration', 1, 600000)->id, 'join');
+    $trx = app(TransactionPoster::class)->post($buyer, pin('registrasi_upgrade', 1, 600000)->id, 'join');
 
     expect($trx->sponsor_bonus_total)->toBe(0)
         ->and(BonusEntry::count())->toBe(0);

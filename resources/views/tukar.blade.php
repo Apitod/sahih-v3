@@ -91,12 +91,11 @@
                     <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                         <span class="font-mono tracking-wider">{{ $pin->code }}</span>
                         <div class="flex flex-wrap items-center gap-2">
-                            <x-badge :tone="$pin->type === 'upgrade' ? 'proses' : 'info'">
-                                {{ match ($pin->type) {
-                                    'upgrade' => 'upgrade ke '.($peringkat[$pin->target_rank] ?? '?'),
-                                    'ro' => 'repeat order',
-                                    'registration' => 'registrasi',
-                                    default => $pin->type,
+                            <x-badge :tone="$pin->untukUpgrade() ? 'proses' : 'info'">
+                                {{ match (true) {
+                                    $pin->untukUpgrade() => 'naik peringkat ke '.($peringkat[$pin->target_rank] ?? '?'),
+                                    $pin->isRo() => 'repeat order',
+                                    default => 'pendaftaran',
                                 } }}
                             </x-badge>
                             <span class="text-tinta/70">{{ number_format($pin->points, 0, ',', '.') }} poin</span>

@@ -38,7 +38,7 @@ it('join 3 poin tidak memberi poin leadership kalau upline bukan Manager', funct
     $b = member('agent');
     $x = member('reseller', $b);
 
-    app(TransactionPoster::class)->post($x, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($x, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
 
     // Upline masih Agent, belum Manager → PL hangus, tidak dicatat.
     expect(pl($b))->toBe(0);
@@ -48,7 +48,7 @@ it('join 3 poin memberi poin leadership kalau upline sudah Manager', function ()
     $b = member('manager', null, ['is_manager' => true]);
     $x = member('reseller', $b);
 
-    app(TransactionPoster::class)->post($x, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($x, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
 
     expect(pl($b))->toBe(3);
 });
@@ -89,7 +89,7 @@ it('non-Manager tidak punya baris poin leadership sama sekali', function () {
     $b = member('reseller');
     $x = member('reseller', $b);
 
-    app(TransactionPoster::class)->post($x, pin('registration', 1, 600000)->id, 'join');
+    app(TransactionPoster::class)->post($x, pin('registrasi_upgrade', 1, 600000)->id, 'join');
 
     expect(pl($b))->toBe(0)
         ->and($b->fresh()->rank)->toBe('reseller');

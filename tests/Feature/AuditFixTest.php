@@ -51,31 +51,31 @@ it('hadiah tidak dobel walau pembeli dan sponsor dinilai dua kali', function () 
         ->and(MilestoneClaim::count())->toBe(2);
 });
 
-it('PIN registrasi di luar paket 1/3/6 poin ditolak saat dibuat', function () {
+it('PIN gabungan di luar paket 1/3/6 poin ditolak saat dibuat untuk mendaftar', function () {
     $admin = adminUji();
 
     $this->actingAs($admin, 'admin')
-        ->post('/admin/pin', ['type' => 'registration', 'points' => 2, 'price' => 1200000, 'quantity' => 1])
+        ->post('/admin/pin', ['type' => 'registrasi_upgrade', 'points' => 2, 'price' => 1200000, 'quantity' => 1])
         ->assertSessionHasErrors('points');
 
     expect(\App\Models\Pin::count())->toBe(0);
 });
 
-it('PIN registrasi dengan harga bukan 600.000 x poin ditolak', function () {
+it('PIN gabungan dengan harga bukan 600.000 x poin ditolak', function () {
     $admin = adminUji();
 
     $this->actingAs($admin, 'admin')
-        ->post('/admin/pin', ['type' => 'registration', 'points' => 6, 'price' => 100, 'quantity' => 1])
+        ->post('/admin/pin', ['type' => 'registrasi_upgrade', 'points' => 6, 'price' => 100, 'quantity' => 1])
         ->assertSessionHasErrors('price');
 
     expect(\App\Models\Pin::count())->toBe(0);
 });
 
-it('PIN upgrade ke Reseller ditolak saat dibuat', function () {
+it('PIN naik peringkat ke Reseller ditolak saat dibuat', function () {
     $admin = adminUji();
 
     $this->actingAs($admin, 'admin')
-        ->post('/admin/pin', ['type' => 'upgrade', 'points' => 0, 'price' => 1800000, 'quantity' => 1, 'target_rank' => 'reseller'])
+        ->post('/admin/pin', ['type' => 'registrasi_upgrade', 'points' => 0, 'price' => 1800000, 'quantity' => 1, 'target_rank' => 'reseller'])
         ->assertSessionHasErrors('target_rank');
 
     expect(\App\Models\Pin::count())->toBe(0);
@@ -85,8 +85,8 @@ it('anggota tidak bisa join dua kali', function () {
     $sponsor = member('distributor');
     $buyer = member('reseller', $sponsor);
 
-    $pertama = pin('registration', 1, 600000);
-    $kedua = pin('registration', 6, 3600000);
+    $pertama = pin('registrasi_upgrade', 1, 600000);
+    $kedua = pin('registrasi_upgrade', 6, 3600000);
 
     $poster = app(TransactionPoster::class);
     $poster->post($buyer, $pertama->id, 'join');
@@ -98,21 +98,33 @@ it('anggota tidak bisa join dua kali', function () {
         ->and($kedua->fresh()->status)->toBe('issued');
 });
 
-it('PIN registrasi yang dititipkan tidak tampil di halaman tukar', function () {
+it('PIN pendaftaran yang dititipkan tidak tampil di halaman tukar', function () {
     $anggota = member('reseller');
-    $registrasi = pin('registration', 1, 600000);
-    $registrasi->update(['assigned_member_id' => $anggota->id]);
+    // PIN gabungan tanpa peringkat tujuan = PIN pendaftaran; hanya admin yang memakainya.
+    $pendaftaran = pin('registrasi_upgrade', 1, 600000);
+    $pendaftaran->update(['assigned_member_id' => $anggota->id]);
 
     $this->actingAs($anggota, 'web')
         ->get('/tukar')
         ->assertOk()
-        ->assertDontSee($registrasi->code);
+        ->assertDontSee($pendaftaran->code);
 });
 
-it('PIN upgrade yang harganya tidak cocok dengan peringkat pembeli ditolak (DECISIONS #59)', function () {
-    // PIN dibuat untuk Reseller -> Agent (Rp 1.200.000), tapi pemakainya sudah Agent.
+it('PIN naik peringkat yang dititipkan tampil di halaman tukar', function () {
+    $anggota = member('reseller');
+    $naik = pin('registrasi_upgrade', 2, 1200000, 'agent');
+    $naik->update(['assigned_member_id' => $anggota->id]);
+
+    $this->actingAs($anggota, 'web')
+        ->get('/tukar')
+        ->assertOk()
+        ->assertSee($naik->code);
+});
+
+it('PIN naik peringkat yang harganya tidak cocok dengan peringkat pembeli ditolak (DECISIONS #73)', function () {
+    // PIN dibuat untuk Reseller -> Agent (2 pin = Rp 1.200.000), tapi pemakainya sudah Agent.
     $anggota = member('agent');
-    $pin = pin('upgrade', 0, 1200000, 'agent');
+    $pin = pin('registrasi_upgrade', 2, 1200000, 'agent');
 
     expect(fn () => app(TransactionPoster::class)->post($anggota, $pin->id, 'upgrade'))
         ->toThrow(RuntimeException::class);
@@ -122,12 +134,13 @@ it('PIN upgrade yang harganya tidak cocok dengan peringkat pembeli ditolak (DECI
         ->and(Transaction::count())->toBe(0);
 });
 
-it('harga PIN upgrade mengikuti selisih paket untuk tiap jalur', function () {
+it('harga PIN naik peringkat mengikuti jumlah pin x Rp 600.000 untuk tiap jalur', function () {
     $harga = app(\App\Services\PackagePrice::class);
 
-    expect($harga->upgradePrice('reseller', 'agent'))->toBe(1200000)
-        ->and($harga->upgradePrice('reseller', 'distributor'))->toBe(3000000)
-        ->and($harga->upgradePrice('agent', 'distributor'))->toBe(1800000);
+    // Selisih poin antar peringkat, dikali harga per pin (DECISIONS #73).
+    expect($harga->upgradePrice('reseller', 'agent'))->toBe(1200000)      // 2 pin
+        ->and($harga->upgradePrice('reseller', 'distributor'))->toBe(3000000)  // 5 pin
+        ->and($harga->upgradePrice('agent', 'distributor'))->toBe(1800000);    // 3 pin
 });
 
 it('putaran hadiah tetap 3.500 walau hadiah 3.500 dinonaktifkan (DECISIONS #61)', function () {

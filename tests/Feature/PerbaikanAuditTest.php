@@ -40,10 +40,10 @@ it('PIN RO dengan harga benar tetap diterima', function () {
         ->and($anggota->fresh()->pointTotal('pr'))->toBe(3);
 });
 
-// === T-07: PIN registrasi diperiksa harganya dan paketnya saat dipakai ===
-it('PIN registrasi dengan harga salah ditolak saat posting', function () {
+// === T-07: PIN pendaftaran diperiksa harganya dan paketnya saat dipakai ===
+it('PIN pendaftaran dengan harga salah ditolak saat posting', function () {
     $pembeli = member('reseller');
-    $kode = pin('registration', 1, 500000); // harga RO, bukan harga pendaftaran
+    $kode = pin('registrasi_upgrade', 1, 500000); // harga RO, bukan harga pendaftaran
 
     expect(fn () => app(TransactionPoster::class)->post($pembeli, $kode->id, 'join'))
         ->toThrow(RuntimeException::class);
@@ -52,9 +52,9 @@ it('PIN registrasi dengan harga salah ditolak saat posting', function () {
         ->and($kode->fresh()->status)->toBe('issued');
 });
 
-it('PIN registrasi dengan poin di luar paket ditolak saat posting', function () {
+it('PIN pendaftaran dengan poin di luar paket ditolak saat posting', function () {
     $pembeli = member('reseller');
-    $kode = pin('registration', 2, 1200000); // paket 2 poin tidak ada di §2
+    $kode = pin('registrasi_upgrade', 2, 1200000); // paket 2 poin tidak ada di §2
 
     expect(fn () => app(TransactionPoster::class)->post($pembeli, $kode->id, 'join'))
         ->toThrow(RuntimeException::class);

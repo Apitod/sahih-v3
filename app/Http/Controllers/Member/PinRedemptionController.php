@@ -26,10 +26,16 @@ class PinRedemptionController extends Controller
         $halamanRiwayat = max(1, (int) $request->query('riwayat', 1));
 
         return view('tukar', [
-            // PIN registrasi ditolak di halaman ini, jadi tidak perlu ditampilkan.
+            // Hanya PIN yang bisa dipakai anggota: PIN RO, dan PIN gabungan yang
+            // memang untuk naik peringkat (punya peringkat tujuan). PIN pendaftaran
+            // dipakai admin saat mendaftarkan anggota baru, jadi tidak ditampilkan.
             'pinSaya' => Pin::where('assigned_member_id', $member->id)
                 ->where('status', 'issued')
-                ->where('type', '!=', 'registration')
+                ->where(function ($q) {
+                    $q->where('type', Pin::JENIS_RO)
+                        ->orWhere(fn ($q2) => $q2->where('type', Pin::JENIS_REGISTRASI_UPGRADE)
+                            ->whereNotNull('target_rank'));
+                })
                 ->orderBy('type')
                 ->get(),
             'riwayat' => Transaction::where('member_id', $member->id)
@@ -42,7 +48,11 @@ class PinRedemptionController extends Controller
                 'peringkat' => $member->rank,
                 'jumlah_pin' => Pin::where('assigned_member_id', $member->id)
                     ->where('status', 'issued')
-                    ->where('type', '!=', 'registration')
+                    ->where(function ($q) {
+                        $q->where('type', Pin::JENIS_RO)
+                            ->orWhere(fn ($q2) => $q2->where('type', Pin::JENIS_REGISTRASI_UPGRADE)
+                                ->whereNotNull('target_rank'));
+                    })
                     ->count(),
             ],
         ]);
@@ -65,15 +75,19 @@ class PinRedemptionController extends Controller
             return back()->withInput()->withErrors(['code' => 'Kode PIN tidak dikenal. Periksa lagi hurufnya.']);
         }
 
-        if ($pin->type === 'registration') {
-            return back()->withErrors(['code' => 'PIN registrasi dipakai admin saat mendaftarkan anggota baru, bukan di halaman ini.']);
+        // PIN naik peringkat WAJIB punya pemegang sah. PIN tanpa pemilik (assigned NULL)
+        // tidak boleh ditebus siapa pun: si peneus akan menaikkan peringkatnya sendiri
+        // hanya karena tahu kodepya (J1 audit 3 Nov). PIN seperti itu hanya sah sebagai
+        // PIN pendaftaran, yang tidak dipakai di halaman ini.
+        if ($pin->untukUpgrade() && $pin->assigned_member_id !== $member->id) {
+            return back()->withInput()->withErrors(['code' => 'PIN ini bukan untuk akun Anda.']);
         }
 
-        if ($pin->type === 'upgrade') {
-            if ($pin->target_rank === null) {
-                return back()->withErrors(['code' => 'PIN ini tidak menyebut peringkat tujuan, jadi tidak bisa dipakai. Hubungi admin.']);
-            }
+        if ($pin->isRegistrasiUpgrade() && $pin->untukPendaftaran()) {
+            return back()->withErrors(['code' => 'PIN ini untuk mendaftarkan anggota baru, bukan untuk akun yang sudah ada. Hubungi admin.']);
+        }
 
+        if ($pin->untukUpgrade()) {
             if ($this->ranks->weight($pin->target_rank) <= $this->ranks->weight($member->rank)) {
                 $tujuan = ucfirst($pin->target_rank);
 
@@ -84,7 +98,7 @@ class PinRedemptionController extends Controller
         }
 
         try {
-            $trx = $this->poster->post($member, $pin->id, $pin->type === 'upgrade' ? 'upgrade' : 'ro');
+            $trx = $this->poster->post($member, $pin->id, $pin->isRo() ? 'ro' : 'upgrade');
         } catch (\RuntimeException $e) {
             // Jangan teruskan pesan mentah (mis. "status: used") ke anggota.
             report($e);
@@ -94,7 +108,7 @@ class PinRedemptionController extends Controller
             ]);
         }
 
-        $pesan = $pin->type === 'upgrade'
+        $pesan = $pin->untukUpgrade()
             ? "PIN dipakai. Peringkat Anda sekarang {$this->label($member->fresh()->rank)}."
             : 'PIN dipakai. Repeat order tercatat.';
 

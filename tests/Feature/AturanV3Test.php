@@ -41,10 +41,10 @@ it('PR dari anggota yang disponsori ikut menaikkan peringkat sponsor', function 
     $b = member('reseller', $sponsor);
 
     // Dua anggota masing-masing daftar 3 poin → sponsor dapat 3 PR + 3 PR = 6 PR.
-    app(TransactionPoster::class)->post($a, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($a, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
     expect($sponsor->fresh()->rank)->toBe('agent');   // 3 PR
 
-    app(TransactionPoster::class)->post($b, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($b, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
     expect($sponsor->fresh()->rank)->toBe('distributor');   // 6 PR
 });
 
@@ -121,7 +121,7 @@ it('rantai bonus sponsor ditelusuri sampai 50 tingkat', function () {
 
     $pembeli = member('reseller', end($rantai));
 
-    app(TransactionPoster::class)->post($pembeli, pin('registration', 1, 600000)->id, 'join');
+    app(TransactionPoster::class)->post($pembeli, pin('registrasi_upgrade', 1, 600000)->id, 'join');
 
     // Distributor di puncak harus tetap dapat selisih 5% walau jaraknya 50 tingkat.
     $bonus = \App\Models\BonusEntry::where('member_id', $ujung->id)->sum('amount');
@@ -140,7 +140,7 @@ it('tingkat ke-51 ke atas tidak dijangkau lagi', function () {
 
     $pembeli = member('reseller', end($rantai));
 
-    app(TransactionPoster::class)->post($pembeli, pin('registration', 1, 600000)->id, 'join');
+    app(TransactionPoster::class)->post($pembeli, pin('registrasi_upgrade', 1, 600000)->id, 'join');
 
     expect((int) \App\Models\BonusEntry::where('member_id', $ujung->id)->sum('amount'))->toBe(0);
 });
@@ -213,7 +213,7 @@ it('upline non-Manager tidak dicatat poin leadership sama sekali', function () {
     $upline = member('distributor');   // Distributor, belum Manager
     $a = member('reseller', $upline);
 
-    app(TransactionPoster::class)->post($a, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($a, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
 
     expect(PointEntry::where('member_id', $upline->id)->where('kind', 'pl')->count())->toBe(0);
 });
@@ -222,7 +222,7 @@ it('upline Manager menerima poin leadership sebesar pin transaksi', function () 
     $upline = member('manager', null, ['is_manager' => true]);
     $a = member('reseller', $upline);
 
-    app(TransactionPoster::class)->post($a, pin('registration', 3, 1800000)->id, 'join');
+    app(TransactionPoster::class)->post($a, pin('registrasi_upgrade', 3, 1800000)->id, 'join');
 
     expect($upline->fresh()->pointTotal('pl'))->toBe(3);
 });
