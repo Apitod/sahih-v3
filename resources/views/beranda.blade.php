@@ -202,7 +202,18 @@
                                 &middot; putaran {{ $klaim->cycle }}
                             </p>
                         </div>
-                        <x-badge :tone="$nadaKlaim">{{ $teksKlaim }}</x-badge>
+                        <div class="flex items-center gap-3">
+                            <x-badge :tone="$nadaKlaim">{{ $teksKlaim }}</x-badge>
+                            @if ($klaim->status === 'eligible')
+                                <form method="POST" action="{{ route('hadiah.klaim') }}">
+                                    @csrf
+                                    <input type="hidden" name="claim_id" value="{{ $klaim->id }}">
+                                    <button class="rounded bg-amber px-3 py-1 text-xs font-semibold text-tinta hover:bg-amber/90">
+                                        Ajukan
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     </li>
                 @endforeach
             </ul>

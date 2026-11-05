@@ -34,15 +34,23 @@ Aplikasi punya dua jenis pengguna dengan area terpisah:
 ## Fitur
 
 ### Area Anggota
+- **Daftar** (`/daftar`) — anggota baru mendaftar sendiri dengan kode PIN pendaftaran.
+  Form: username, nama, password, telepon, alamat, kode referral (opsional), kode PIN.
+  Referral kosong → tanpa upline, bonus Rp 0; referal diisi tapi tidak ditemukan → ditolak.
 - **Login** dengan `username` + password (rate limit 10 percobaan/menit per username+IP).
 - **Beranda** — total poin PA / PR / PL (dihitung dari ledger `point_entries`, bukan kolom cache),
   10 riwayat poin terakhir, hadiah milestone yang diklaim, dan info sponsor.
+  Hadiah yang jadi hak punya tombol **Ajukan**; setelah diajukan status jadi "sedang diproses".
+- **Klaim hadiah** — anggota mengajukan hadiah (status `eligible` → `requested`).
+  Diambil di kantor setelah admin menyerahkan. Poin tidak berkurang saat klaim.
 - **Tukar PIN** — menukar PIN **upgrade** (menaikkan peringkat) atau **RO** (repeat order).
-  PIN registrasi sengaja ditolak di sini karena dipakai admin saat mendaftarkan anggota baru.
+  PIN registrasi sengaja ditolak di sini karena dipakai saat mendaftar di `/daftar`.
 - Akun berstatus `suspended` otomatis ditolak saat login (middleware `active.member`).
 
 ### Area Admin
 - **Dashboard** — jumlah anggota, jumlah PIN belum dipakai, jumlah transaksi, 8 transaksi terakhir.
+- **Klaim hadiah** — daftar klaim per status, menyerahkan hadiah dengan catatan (status → `handed`).
+  Nilai rupiah hadiah tidak pernah terkirim ke tampilan.
 - **Kelola PIN**
   - Terbitkan PIN dengan dua jenis: `registrasi_upgrade` dan `ro` (1–50 sekaligus).
     Satu PIN `registrasi_upgrade` bisa dipakai untuk **mendaftarkan anggota baru**
@@ -56,9 +64,8 @@ Aplikasi punya dua jenis pengguna dengan area terpisah:
     - PIN `ro` = jumlah pin × Rp 500.000.
     - Harga yang tidak sesuai hitungan ditolak, baik saat PIN dibuat maupun saat dipakai.
   - **Batalkan (void)** PIN yang belum dipakai, dengan alasan wajib.
-  - **PIN pendaftaran** (tanpa peringkat tujuan) dijual untuk mendaftarkan anggota baru.
-    Alur registrasi anggota lewat web belum dibangun — status `belum sampai tahap itu`.
-    PIN-nya tetap sah dan tidak kedaluwarsa, dipakai begitu alurnya ada.
+  - **PIN pendaftaran** (tanpa peringkat tujuan) dipakai di `/daftar` — anggota baru
+    mendaftar sendiri dengan kode PIN-nya. Referral kosong = tanpa upline, bonus Rp 0.
 - Semua aksi admin tercatat di tabel `audit_logs` (aktor, aksi, before/after, IP).
 
 ### Domain / Aturan Bisnis
