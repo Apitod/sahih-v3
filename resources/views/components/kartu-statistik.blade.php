@@ -11,7 +11,7 @@
         'netral' => 'border-garis',
         'sukses' => 'border-hijau/40',
         'proses' => 'border-amber/50',
-        'bahaya' => 'border-red-200',
+        'bahaya' => 'border-bahaya-garis',
         'info' => 'border-sky-200',
     ][$tone] ?? 'border-garis';
 @endphp

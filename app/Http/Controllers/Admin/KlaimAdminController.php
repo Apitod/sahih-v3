@@ -56,7 +56,7 @@ class KlaimAdminController
             'note' => $data['note'] ?? null,
         ]);
 
-        return redirect()->route('admin.klaim')->with('sukses', 'Hadiah ditandai sudah diserahkan.');
+        return redirect()->route('admin.klaim')->with('status', 'Hadiah ditandai sudah diserahkan.');
     }
 
     /** Hadiah aktif untuk referensi tampilan. */

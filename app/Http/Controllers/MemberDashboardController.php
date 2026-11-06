@@ -6,6 +6,7 @@ use App\Models\Member;
 use App\Models\MilestoneReward;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class MemberDashboardController extends Controller
@@ -55,9 +56,54 @@ class MemberDashboardController extends Controller
             'hadiah' => $hadiah,
             'bonus' => $bonus,
             'jaringan' => $this->jaringanTigaTingkat($member),
+            'pohon' => $this->pohonJaringan($member),
             'sponsor' => $member->sponsor,
             'status' => $this->statusRingkas($member, $totalPoin),
         ]);
+    }
+
+    /**
+     * Pohon genealogi bersarang untuk tampilan grafis (PRD v3.0 §7.2,
+     * keputusan #39: nama + peringkat saja). Query tetap per tingkat
+     * (maksimal 3 query), lalu disusun jadi struktur anak-anak di memori.
+     *
+     * @return Collection<int, array{model: Member, anak: Collection}>
+     */
+    private function pohonJaringan($member, int $kedalaman = 3)
+    {
+        $lapis = [];
+        $tolok = collect([$member]);
+
+        for ($i = 0; $i < $kedalaman; $i++) {
+            $berikut = Member::whereIn('sponsor_id', $tolok->pluck('id')->all())
+                ->orderBy('username')
+                ->get(['id', 'username', 'name', 'rank', 'sponsor_id']);
+
+            if ($berikut->isEmpty()) {
+                break;
+            }
+
+            $lapis[] = $berikut;
+            $tolok = $berikut;
+        }
+
+        $petaAnak = [];
+        foreach ($lapis as $lapisan) {
+            foreach ($lapisan as $anggota) {
+                $petaAnak[$anggota->sponsor_id][] = $anggota;
+            }
+        }
+
+        $tanam = function (int $id, int $sisa) use (&$tanam, $petaAnak) {
+            return collect($petaAnak[$id] ?? [])->map(function ($anak) use ($tanam, $sisa) {
+                return [
+                    'model' => $anak,
+                    'anak' => $sisa > 0 ? $tanam($anak->id, $sisa - 1) : collect(),
+                ];
+            });
+        };
+
+        return $tanam($member->id, $kedalaman - 1);
     }
 
     /**
@@ -65,7 +111,7 @@ class MemberDashboardController extends Controller
      * nama + peringkat saja). Dibatasi supaya beranda tidak menarik seluruh
      * jaringan ke memori.
      *
-     * @return array<int, array{tingkat: int, anggota: \Illuminate\Support\Collection}>
+     * @return array<int, array{tingkat: int, anggota: Collection}>
      */
     private function jaringanTigaTingkat($member): array
     {

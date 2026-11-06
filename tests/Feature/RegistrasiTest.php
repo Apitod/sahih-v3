@@ -9,9 +9,9 @@ use App\Models\BonusEntry;
 /**
  * Registrasi anggota baru lewat web (BUSINESS_RULES §9, §10; DECISIONS #46).
  *
- * Form: username, nama, password, telepon, alamat, PIN registrasi, kode referral
- * (opsional). PIN registrasi = `registrasi_upgrade` TANPA peringkat tujuan,
- * berisi 1/3/6 pin Rp600.000/pin.
+ * Form: username, nama, password, telepon, alamat, NIK KTP (16 digit),
+ * PIN registrasi, kode referral (opsional). PIN registrasi =
+ * `registrasi_upgrade` TANPA peringkat tujuan, berisi 1/3/6 pin Rp600.000/pin.
  *
  * Aturan yang dikunci:
  *  - Referral diisi tapi tidak ditemukan -> ditolak, tidak ada akun tercipta.
@@ -19,6 +19,7 @@ use App\Models\BonusEntry;
  *  - Referral valid -> akun masuk jaringannya, bonus sponsor terposting.
  *  - PIN tidak valid / sudah terpakai -> ditolak, tidak ada akun tercipta.
  *  - Username kembar -> ditolak.
+ *  - NIK KTP wajib 16 digit dan unik -> simpangan ditolak, tidak ada akun.
  */
 
 function pinDaftarPaket(int $poin): Pin
@@ -33,6 +34,12 @@ function pinDaftarPaket(int $poin): Pin
     ]);
 }
 
+/** NIK 16 digit unik per pemanggilan. */
+function nikAcak(): string
+{
+    return (string) rand(3200000000000000, 3299999999999999);
+}
+
 function daftar(array $isi = []): \Illuminate\Testing\TestResponse
 {
     return test()->post('/daftar', array_merge([
@@ -42,6 +49,7 @@ function daftar(array $isi = []): \Illuminate\Testing\TestResponse
         'password_confirmation' => 'rahasia123',
         'phone' => '0812'.rand(1000000, 9999999),
         'address' => 'Jl. Uji No. 1',
+        'nik_ktp' => nikAcak(),
         'referral' => '',
         'code' => '',
     ], $isi));
@@ -130,6 +138,25 @@ it('password dan konfirmasi tidak sama -> ditolak', function () {
         ->assertSessionHasErrors('password');
 
     expect(Member::count())->toBe(0);
+});
+
+it('NIK kurang dari 16 digit -> ditolak', function () {
+    daftar(['nik_ktp' => '3201234'])
+        ->assertSessionHasErrors('nik_ktp');
+});
+
+it('NIK memuat huruf -> ditolak', function () {
+    daftar(['nik_ktp' => '3201234abc12345X'])
+        ->assertSessionHasErrors('nik_ktp');
+});
+
+it('NIK sudah terpakai anggota lain -> ditolak', function () {
+    member('reseller', null, ['nik_ktp' => $nik = nikAcak()]);
+
+    daftar(['nik_ktp' => $nik])
+        ->assertSessionHasErrors('nik_ktp');
+
+    expect(Member::count())->toBe(1);  // NIK harus unik
 });
 
 it('tamu bisa membuka halaman form registrasi', function () {

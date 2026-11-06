@@ -25,7 +25,7 @@
 
         @if ($errors->any())
             <p role="alert"
-               class="mt-4 rounded-kartu border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+               class="mt-4 rounded-kartu border border-bahaya-garis bg-bahaya-lembut px-3 py-2 text-sm text-bahaya">
                 {{ $errors->first() }}
             </p>
         @endif
@@ -35,29 +35,29 @@
             @csrf
 
             <div>
-                <label for="email" class="block text-sm font-medium">Email</label>
+                <label for="email" class="mb-1 block text-sm font-medium">Email</label>
                 <input id="email" name="email" type="email" value="{{ old('email') }}"
                        required autofocus autocomplete="username"
                        @error('email') aria-invalid="true" aria-describedby="email-error" @enderror
-                       class="mt-1 w-full rounded-kartu border border-garis bg-krem px-3 py-2 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20">
+                       class="w-full rounded-lg border border-garis bg-krem px-3 py-2.5 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20 @error('email') border-bahaya @enderror">
                 @error('email')
-                    <p id="email-error" class="mt-1 text-sm text-red-700">{{ $message }}</p>
+                    <p id="email-error" class="mt-1 text-xs text-bahaya">{{ $message }}</p>
                 @enderror
             </div>
 
             <div>
-                <label for="password" class="block text-sm font-medium">Password</label>
+                <label for="password" class="mb-1 block text-sm font-medium">Password</label>
                 <input id="password" name="password" type="password"
                        required autocomplete="current-password"
                        @error('password') aria-invalid="true" aria-describedby="password-error" @enderror
-                       class="mt-1 w-full rounded-kartu border border-garis bg-krem px-3 py-2 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20">
+                       class="w-full rounded-lg border border-garis bg-krem px-3 py-2.5 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20 @error('password') border-bahaya @enderror">
                 @error('password')
-                    <p id="password-error" class="mt-1 text-sm text-red-700">{{ $message }}</p>
+                    <p id="password-error" class="mt-1 text-xs text-bahaya">{{ $message }}</p>
                 @enderror
             </div>
 
             <button type="submit"
-                    class="w-full rounded-kartu bg-tinta px-4 py-2.5 text-sm font-semibold text-krem transition hover:bg-tinta/90 focus:outline-none focus:ring-2 focus:ring-tinta/40">
+                    class="w-full rounded-lg bg-tinta px-4 py-3 text-sm font-semibold text-krem shadow-sm transition hover:bg-tinta/90 focus:outline-none focus:ring-2 focus:ring-tinta/40 active:scale-[.99]">
                 Masuk sebagai admin
             </button>
         </form>

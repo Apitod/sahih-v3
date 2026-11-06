@@ -35,18 +35,18 @@
         {{-- Panel kanan: formulir --}}
         <section aria-labelledby="judul-masuk" class="mx-auto w-full max-w-sm">
             <h1 id="judul-masuk" class="font-display text-2xl tracking-tight">Masuk</h1>
-            <p class="mt-1 text-sm text-tinta/70">Pakai username dan password yang diberikan admin.</p>
+            <p class="mt-1 text-sm text-tinta/60">Pakai username dan password yang diberikan admin.</p>
 
             @if (session('status'))
                 <p role="status"
-                   class="mt-4 rounded-kartu border border-hijau/40 bg-hijau/10 px-3 py-2 text-sm text-hijau-tua">
+                   class="mt-4 rounded-lg border border-hijau/40 bg-hijau/10 px-3 py-2.5 text-sm text-hijau-tua">
                     {{ session('status') }}
                 </p>
             @endif
 
             @if ($errors->any())
                 <p role="alert"
-                   class="mt-4 rounded-kartu border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                   class="mt-4 rounded-lg border border-bahaya-garis bg-bahaya-lembut px-3 py-2.5 text-sm text-bahaya">
                     {{ $errors->first() }}
                 </p>
             @endif
@@ -56,24 +56,24 @@
                 @csrf
 
                 <div>
-                    <label for="username" class="block text-sm font-medium">Username</label>
+                    <label for="username" class="mb-1 block text-sm font-medium">Username</label>
                     <input id="username" name="username" type="text" value="{{ old('username') }}"
                            required autofocus autocomplete="username"
                            @error('username') aria-invalid="true" aria-describedby="username-error" @enderror
-                           class="mt-1 w-full rounded-kartu border border-garis bg-krem px-3 py-2 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20">
+                           class="w-full rounded-lg border border-garis bg-krem px-3 py-2.5 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20 @error('username') border-bahaya @enderror">
                     @error('username')
-                        <p id="username-error" class="mt-1 text-sm text-red-700">{{ $message }}</p>
+                        <p id="username-error" class="mt-1 text-xs text-bahaya">{{ $message }}</p>
                     @enderror
                 </div>
 
                 <div>
-                    <label for="password" class="block text-sm font-medium">Password</label>
+                    <label for="password" class="mb-1 block text-sm font-medium">Password</label>
                     <input id="password" name="password" type="password"
                            required autocomplete="current-password"
                            @error('password') aria-invalid="true" aria-describedby="password-error" @enderror
-                           class="mt-1 w-full rounded-kartu border border-garis bg-krem px-3 py-2 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20">
+                           class="w-full rounded-lg border border-garis bg-krem px-3 py-2.5 text-sm outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20 @error('password') border-bahaya @enderror">
                     @error('password')
-                        <p id="password-error" class="mt-1 text-sm text-red-700">{{ $message }}</p>
+                        <p id="password-error" class="mt-1 text-xs text-bahaya">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -84,16 +84,26 @@
                 </label>
 
                 <button type="submit"
-                        class="w-full rounded-kartu bg-amber px-4 py-2.5 text-sm font-semibold text-tinta transition hover:bg-amber/90 focus:outline-none focus:ring-2 focus:ring-amber/50">
+                        class="w-full rounded-lg bg-amber px-4 py-3 text-sm font-semibold text-tinta shadow-sm transition hover:bg-amber/90 focus:outline-none focus:ring-2 focus:ring-amber/50 active:scale-[.99]">
                     Masuk
                 </button>
             </form>
 
-            <div class="mt-4 space-y-1 text-xs text-tinta/60">
-                <p>Belum punya akun? Pendaftaran lewat admin &mdash; siapkan PIN registrasi.</p>
+            <div class="mt-5 space-y-3 text-xs text-tinta/60">
+                <div class="rounded-kartu border border-garis bg-krem/70 p-4">
+                    <p class="text-sm font-medium text-tinta">Belum punya akun?</p>
+                    <p class="mt-1 leading-relaxed">
+                        Pendaftaran dilakukan sendiri dari halaman ini. Minta PIN registrasi ke admin,
+                        lalu isi formulir pendaftaran.
+                    </p>
+                    <a href="{{ route('daftar') }}"
+                       class="mt-3 inline-flex items-center rounded-kartu bg-amber px-3.5 py-2 text-sm font-medium text-tinta shadow-sm transition hover:bg-amber/90 focus:outline-none focus:ring-2 focus:ring-amber/50">
+                        Daftar anggota baru
+                    </a>
+                </div>
                 <p>
                     Pengelola?
-                    <a href="{{ route('admin.login') }}" class="underline hover:text-tinta">Masuk sebagai admin</a>.
+                    <a href="{{ route('admin.login') }}" class="font-medium text-hijau-tua underline underline-offset-2 hover:text-hijau">Masuk sebagai admin</a>.
                 </p>
             </div>
         </section>

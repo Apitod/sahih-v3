@@ -33,17 +33,21 @@ class RegistrasiController extends Controller
     {
         $data = $request->validate([
             'username' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9._-]*$/'],
-            'name' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:255'],
+            'name'     => ['required', 'string', 'max:100'],
+            'phone'    => ['required', 'string', 'max:30'],
+            'address'  => ['nullable', 'string', 'max:255'],
+            'nik_ktp'  => ['required', 'string', 'digits:16', 'unique:members,nik_ktp'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'referral' => ['nullable', 'string', 'max:30'],
-            'code' => ['required', 'string', 'max:20'],
+            'code'     => ['required', 'string', 'max:20'],
         ], [
             'username.required' => 'Username wajib diisi.',
-            'username.regex' => 'Username hanya huruf, angka, titik, garis bawah, atau strip.',
+            'username.regex'    => 'Username hanya huruf, angka, titik, garis bawah, atau strip.',
+            'nik_ktp.required'  => 'NIK KTP wajib diisi.',
+            'nik_ktp.digits'    => 'NIK KTP harus tepat 16 digit angka.',
+            'nik_ktp.unique'    => 'NIK KTP sudah terdaftar. Hubungi admin.',
             'password.confirmed' => 'Ulangi password harus sama.',
-            'code.required' => 'Kode PIN pendaftaran wajib diisi.',
+            'code.required'     => 'Kode PIN pendaftaran wajib diisi.',
         ]);
 
         $kode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $data['code']));
@@ -72,14 +76,15 @@ class RegistrasiController extends Controller
         try {
             $anggota = DB::transaction(function () use ($data, $pin, $sponsor) {
                 $baru = Member::create([
-                    'username' => $data['username'],
-                    'name' => $data['name'],
-                    'phone' => $data['phone'],
-                    'address' => $data['address'] ?? null,
-                    'password' => $data['password'],
+                    'username'  => $data['username'],
+                    'name'      => $data['name'],
+                    'phone'     => $data['phone'],
+                    'address'   => $data['address'] ?? null,
+                    'nik_ktp'   => $data['nik_ktp'],
+                    'password'  => $data['password'],
                     'sponsor_id' => $sponsor?->id,
-                    'rank' => 'reseller',
-                    'status' => 'active',
+                    'rank'      => 'reseller',
+                    'status'    => 'active',
                     'joined_at' => now(),
                 ]);
 

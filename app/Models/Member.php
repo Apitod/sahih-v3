@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Member extends Authenticatable
 {
     protected $fillable = [
-        'username', 'name', 'phone', 'address', 'password', 'sponsor_id',
+        'username', 'name', 'phone', 'address', 'nik_ktp', 'password', 'sponsor_id',
         'rank', 'is_manager', 'manager_since', 'point_pa', 'point_pr', 'point_pl',
         'status', 'joined_at',
     ];

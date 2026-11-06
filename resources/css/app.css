@@ -6,17 +6,209 @@
 @source '../**/*.js';
 
 @theme {
-    /* Token dari phase-6b-design-system.md */
-    --color-krem: #FFF9F2;
-    --color-tinta: #2D3436;
-    --color-amber: #F0A04B;
-    --color-hijau: #84994F;
-    --color-hijau-tua: #6D7F42;
-    --color-kertas: #FFFFFF;
-    --color-garis: #E7DFD3;
+    /* Professional MLM Business Theme */
+    --color-primary: #1e3a8a;      /* blue-900 - trust, corporate */
+    --color-primary-dark: #1e40af; /* blue-800 */
+    --color-primary-light: #3b82f6; /* blue-500 */
 
-    --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
-    --font-sans: 'Outfit', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --color-success: #059669;      /* emerald-600 - growth, money */
+    --color-success-light: #10b981; /* emerald-500 */
+    --color-success-bg: #d1fae5;   /* emerald-100 */
 
+    --color-warning: #d97706;      /* amber-600 */
+    --color-warning-bg: #fef3c7;   /* amber-100 */
+
+    --color-danger: #dc2626;       /* red-600 */
+    --color-danger-light: #fef2f2; /* red-50 */
+
+    --color-slate-50: #f8fafc;
+    --color-slate-100: #f1f5f9;
+    --color-slate-200: #e2e8f0;
+    --color-slate-300: #cbd5e1;
+    --color-slate-600: #475569;
+    --color-slate-700: #334155;
+    --color-slate-800: #1e293b;
+    --color-slate-900: #0f172a;
+
+    /* Token lama — dipertahankan sampai semua view dimigrasi ke palet baru. */
+    --color-krem: #f8fafc;
+    --color-tinta: #0f172a;
+    --color-amber: #059669;
+    --color-hijau: #059669;
+    --color-hijau-tua: #047857;
+    --color-kertas: #ffffff;
+    --color-garis: #e2e8f0;
+    --color-bahaya: #b42318;
+    --color-bahaya-lembut: #fef3f2;
+    --color-bahaya-garis: #fecdca;
     --radius-kartu: 0.5rem;
+
+    --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    --radius-base: 0.5rem;
+    --radius-lg: 0.75rem;
+}
+
+/* ---------------------------------------------------------------- */
+/* Sidebar Layout */
+
+.sidebar-layout {
+    display: grid;
+    grid-template-columns: 16rem 1fr;
+    min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+    .sidebar-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------------------------------------------------------------- */
+/* Network Tree - Modern styling */
+
+.network-tree {
+    --tree-line-color: #e2e8f0;
+    --tree-node-spacing: 1.5rem;
+}
+
+.tree-root,
+.tree-branch {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
+.tree-branch {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1rem 0 0 2rem;
+    border-left: 2px solid var(--tree-line-color);
+    padding-left: 2rem;
+}
+
+.tree-node > .tree-branch::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: -1rem;
+    width: 2px;
+    height: 1rem;
+    background: var(--tree-line-color);
+}
+
+.tree-branch .tree-node {
+    position: relative;
+}
+
+.tree-branch .tree-node::before {
+    content: '';
+    position: absolute;
+    left: -2rem;
+    top: 1.5rem;
+    width: 2rem;
+    height: 2px;
+    background: var(--tree-line-color);
+}
+
+.tree-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    transition: all 150ms;
+    width: fit-content;
+    min-width: 16rem;
+    max-width: 20rem;
+}
+
+.tree-card:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    border-color: #cbd5e1;
+}
+
+.tree-card-root {
+    border-color: #059669;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.rank-reseller {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.rank-agent {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.rank-distributor {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.rank-manager {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* ---------------------------------------------------------------- */
+/* Stats Cards */
+
+.stat-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    transition: all 150ms;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* ---------------------------------------------------------------- */
+/* Mobile Bottom Nav */
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    padding: 0.5rem;
+    display: none;
+    z-index: 40;
+}
+
+@media (max-width: 768px) {
+    .bottom-nav {
+        display: flex;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    body {
+        padding-bottom: 4rem;
+    }
 }

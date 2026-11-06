@@ -2,11 +2,15 @@
 
 @section('judul', 'Pengaturan — Admin Sahih Bodyfeed')
 
-@section('nav')
-    <a href="{{ route('admin.beranda') }}" class="text-tinta/70 hover:underline">Ringkasan</a>
-    <a href="{{ route('admin.pin.index') }}" class="text-tinta/70 hover:underline">PIN</a>
-    <a href="{{ route('admin.pengaturan') }}" class="text-tinta/70 hover:underline">Pengaturan</a>
-    <span class="text-tinta/70">{{ auth('admin')->user()->name }}</span>
+@section('sidebar')
+    <x-nav-admin />
+@endsection
+
+@section('topbar')
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Admin</p>
+        <p class="text-base font-bold text-slate-900">Pengaturan</p>
+    </div>
 @endsection
 
 @section('isi')
@@ -15,7 +19,8 @@
         keterangan="Angka di halaman ini dipakai langsung oleh perhitungan. Perubahan berlaku untuk transaksi berikutnya, bukan yang sudah tercatat." />
 
     @if (session('status'))
-        <p class="mt-4 rounded-kartu border border-hijau/40 bg-hijau/10 px-4 py-3 text-sm text-hijau-tua">
+        <p role="status"
+           class="mt-4 rounded-kartu border border-hijau/40 bg-hijau/10 px-4 py-3 text-sm text-hijau-tua">
             {{ session('status') }}
         </p>
     @endif
@@ -45,7 +50,8 @@
                                min="0"
                                step="{{ $satuan === 'rupiah' ? '1000' : '1' }}"
                                value="{{ old($kunci, $nilai[$kunci] ?? 0) }}"
-                               class="w-48 rounded-kartu border border-garis px-3 py-2 text-right tabular-nums @error($kunci) border-red-400 @enderror">
+                               @error($kunci) aria-invalid="true" aria-describedby="{{ $kunci }}-error" @enderror
+                               class="w-48 rounded-lg border border-garis bg-krem px-3 py-2.5 text-right tabular-nums outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20 @error($kunci) border-bahaya focus:border-bahaya focus:ring-red-400/20 @enderror">
 
                         @if ($satuan === 'poin')
                             <span class="text-sm text-tinta/60">poin</span>
@@ -53,7 +59,7 @@
                     </div>
 
                     @error($kunci)
-                        <span class="mt-1 block text-xs text-red-700">{{ $message }}</span>
+                        <span id="{{ $kunci }}-error" class="mt-1 block text-xs text-bahaya">{{ $message }}</span>
                     @enderror
                 </label>
             </div>
@@ -61,7 +67,7 @@
 
         <div class="flex flex-wrap items-center gap-3">
             <button type="submit"
-                    class="rounded-kartu bg-amber px-5 py-2.5 font-medium text-tinta hover:bg-amber/90">
+                    class="rounded-kartu bg-amber px-5 py-2.5 text-sm font-medium text-tinta transition hover:bg-amber/90 focus:outline-none focus:ring-2 focus:ring-amber/50">
                 Simpan pengaturan
             </button>
             <span class="text-xs text-tinta/50">Setiap perubahan tercatat di jejak audit.</span>
