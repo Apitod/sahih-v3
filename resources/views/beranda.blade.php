@@ -123,6 +123,27 @@
         </div>
     @endif
 
+    {{-- Referral Card --}}
+    <div class="mt-6 rounded-lg border border-garis bg-krem p-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
+                <h2 class="text-lg font-semibold text-slate-900">Kode Referral Anda</h2>
+                <p class="mt-1 text-sm text-slate-600">
+                    Bagikan kode ini ke calon anggota. Mereka menuliskannya di kolom
+                    <span class="font-medium">Kode Referral</span> saat mendaftar di halaman daftar.
+                </p>
+            </div>
+            <div class="shrink-0 rounded-lg border border-garis bg-white px-5 py-3 text-center">
+                <p class="text-xs uppercase tracking-wide text-slate-500">Kode</p>
+                <p class="mt-1 font-mono text-xl font-bold text-slate-900 select-all">{{ $member->username }}</p>
+            </div>
+        </div>
+        <p class="mt-3 text-xs text-slate-500">
+            Calon anggota yang memakai kode ini otomatis masuk jaringan Anda dan bonus sponsor
+            dihitung sesuai peringkat Anda saat mereka mendaftar.
+        </p>
+    </div>
+
     {{-- Point History --}}
     <div class="mt-8">
         <h2 class="text-lg font-bold text-slate-900">Riwayat Poin</h2>

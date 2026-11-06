@@ -13,6 +13,19 @@ use App\Services\TransactionPoster;
  *  - Tidak ada nilai rupiah di halaman anggota (PRD v3.0 §3.1, §10)
  */
 
+// ---------------------------------------------------------------- kode referral
+
+it('beranda menampilkan kode referral anggota (username) untuk dibagikan', function () {
+    $a = member('reseller');
+
+    $respon = $this->actingAs($a, 'web')->get('/beranda');
+
+    $respon->assertOk()
+        ->assertSee('Kode Referral')
+        ->assertSee($a->username);
+    expect($respon->getContent())->toContain($a->username);
+});
+
 // ---------------------------------------------------------------- pohon genealogi
 
 it('beranda menampilkan pohon genealogi sampai tiga tingkat', function () {
