@@ -64,7 +64,8 @@
         <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h2 class="text-xl font-bold text-slate-900">Menutup Buku Bonus</h2>
             <p class="mt-2 text-sm text-slate-700">
-                Belum ada tanggal tutup buku resmi, jadi bonus dijalankan manual lewat perintah di bawah.
+                Tutup buku bonus bulanan jatuh pada <strong>tanggal 1</strong>: sistem otomatis memproses bonus
+                bulan sebelumnya pada tanggal 1 pukul 01.00. Perintah di bawah ini untuk menjalankan ulang secara manual.
                 Keduanya aman dijalankan berulang: bonus untuk periode yang sudah diproses akan dilewati, tidak dobel.
             </p>
             <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
@@ -74,6 +75,8 @@
                     Rp 2.000 per poin PL yang diterima Manager langsung di bawah seorang Royal Manager. Tanpa <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">--tahun</code>, yang diproses adalah tahun lalu.</li>
                 <li>Jalankan setelah semua transaksi periode itu selesai tercatat. Poin yang masuk setelah perintah dijalankan untuk periode itu <strong>tidak</strong> ikut terbayar otomatis.</li>
                 <li>Hanya Manager yang pernah RO yang menerima bonus leadership. Poin PL anggota non-Manager hangus, tidak ditabung.</li>
+                <li>Bonus yang masuk hari ini baru bisa ditarik <strong>besok (H+1)</strong>, berlaku untuk semua jenis bonus.</li>
+                <li>Modul penarikan saldo masih ditahan: menu Saldo dan Tarik belum tampil sampai penahanannya dibuka.</li>
             </ul>
         </section>
 
