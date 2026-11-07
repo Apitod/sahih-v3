@@ -1,13 +1,18 @@
 <?php
 
+use App\Http\Controllers\Admin\AnggotaController;
 use App\Http\Controllers\Admin\KlaimAdminController;
 use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\PinController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\MemberLoginController;
+use App\Http\Controllers\Member\HadiahController;
 use App\Http\Controllers\Member\KlaimHadiahController;
 use App\Http\Controllers\Member\PinRedemptionController;
+use App\Http\Controllers\Member\PohonController;
+use App\Http\Controllers\Member\ProfilController;
+use App\Http\Controllers\Member\RiwayatController;
 use App\Http\Controllers\MemberDashboardController;
 use App\Http\Controllers\RegistrasiController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +32,12 @@ Route::post('/keluar', [MemberLoginController::class, 'destroy'])->name('logout'
 
 Route::middleware(['auth:web', 'active.member'])->group(function () {
     Route::get('/beranda', [MemberDashboardController::class, 'index'])->name('beranda');
+    Route::get('/riwayat', [RiwayatController::class, 'index'])->name('riwayat');
+    Route::get('/pohon', [PohonController::class, 'index'])->name('pohon');
+    Route::get('/hadiah', [HadiahController::class, 'index'])->name('hadiah');
+    Route::get('/panduan', fn() => view('member.panduan'))->name('panduan');
+    Route::get('/profil', [ProfilController::class, 'edit'])->name('profil.edit');
+    Route::post('/profil', [ProfilController::class, 'update'])->name('profil.update');
 
     Route::get('/tukar', [PinRedemptionController::class, 'create'])->name('tukar');
     Route::post('/hadiah/klaim', [KlaimHadiahController::class, 'store'])->name('hadiah.klaim');
@@ -46,6 +57,12 @@ Route::post('/admin/keluar', [AdminLoginController::class, 'destroy'])->name('ad
 
 Route::middleware(['auth:admin', 'active.admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin.beranda');
+    Route::get('/panduan', fn() => view('admin.panduan'))->name('admin.panduan');
+
+    Route::get('/anggota', [AnggotaController::class, 'index'])->name('admin.anggota.index');
+    Route::get('/anggota/{anggota}', [AnggotaController::class, 'show'])->name('admin.anggota.show');
+    Route::get('/anggota/{anggota}/edit', [AnggotaController::class, 'edit'])->name('admin.anggota.edit');
+    Route::post('/anggota/{anggota}', [AnggotaController::class, 'update'])->name('admin.anggota.update');
 
     Route::get('/pin', [PinController::class, 'index'])->name('admin.pin.index');
     Route::get('/pin/baru', [PinController::class, 'create'])->name('admin.pin.create');
