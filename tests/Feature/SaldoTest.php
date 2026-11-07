@@ -6,6 +6,15 @@ use App\Models\Member;
 use App\Models\Withdrawal;
 use Illuminate\Support\Facades\Hash;
 
+/*
+ * Pencairan ditahan di produksi (DECISIONS #57, #67): route tetap terdaftar tapi
+ * dijaga middleware CekPencairanAktif yang abort 404 selama config-nya false.
+ * Semua test di file ini menyalakan flag supaya modulnya tetap teruji.
+ */
+beforeEach(function () {
+    config(['sahih.pencairan_aktif' => true]);
+});
+
 function anggotaUji(): Member
 {
     return Member::create([
@@ -284,9 +293,21 @@ it('admin menyaring daftar penarikan per status', function () {
         ->assertOk()->assertSee('222.000')->assertDontSee('111.000');
 });
 
-it('nav anggota dan admin memuat link saldo dan pencairan', function () {
+it('nav anggota dan admin memuat link saldo dan pencairan saat flag menyala', function () {
     test()->actingAs(anggotaUji(), 'web')->get('/saldo')->assertSee('href="'.url('/tarik').'"', false);
     test()->actingAs(adminPencairan(), 'admin')->get('/admin/pencairan')->assertSee(url('/admin/pencairan'), false);
+});
+
+it('selama flag mati, saldo dan pencairan balik 404 dan menu tidak muncul', function () {
+    config(['sahih.pencairan_aktif' => false]);
+
+    test()->actingAs(anggotaUji(), 'web')->get('/saldo')->assertNotFound();
+    test()->actingAs(anggotaUji(), 'web')->get('/tarik')->assertNotFound();
+    test()->actingAs(adminPencairan(), 'admin')->get('/admin/pencairan')->assertNotFound();
+
+    test()->actingAs(anggotaUji(), 'web')->get('/beranda')
+        ->assertOk()
+        ->assertDontSee(url('/saldo'), false);
 });
 
 it('penarikan ditolak kalau saldo sudah terpakai lebih dulu', function () {

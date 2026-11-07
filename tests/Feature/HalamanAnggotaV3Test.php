@@ -201,6 +201,8 @@ it('pohon admin menampilkan badge Beku pada downline yang dibekukan', function (
  * berapa yang ditarik (phase-6a §10, BUSINESS_RULES §13 item 5, min Rp 100.000).
  */
 it('halaman saldo dan tarik menampilkan nominal rupiah', function () {
+    config(['sahih.pencairan_aktif' => true]); // modul ditahan secara default
+
     $a = member('reseller');
     BonusEntry::create([
         'member_id' => $a->id, 'kind' => 'sponsor', 'amount' => 1250000,
