@@ -7,6 +7,7 @@ use App\Models\BonusEntry;
 use App\Models\Withdrawal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SaldoController extends Controller
 {
@@ -50,7 +51,23 @@ class SaldoController extends Controller
             'amount.max' => "Jumlah melebihi saldo available.",
         ]);
 
-        DB::transaction(function () use ($request, $member) {
+        DB::transaction(function () use ($request, $member, $min) {
+            // Kunci baris bonus yang akan dipakai. Saldo dibaca di sini, di dalam transaksi,
+            // supaya dua permintaan bersamaan tidak sama-sama lolos validasi saldo lama.
+            $entries = $member->bonusEntries()
+                ->where('status', 'available')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $saldoTerkunci = (int) $entries->sum('amount');
+
+            if ($request->amount > $saldoTerkunci) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Jumlah melebihi saldo available.',
+                ]);
+            }
+
             $withdrawal = Withdrawal::create([
                 'member_id' => $member->id,
                 'amount' => $request->amount,
@@ -63,10 +80,6 @@ class SaldoController extends Controller
 
             // Mark bonus entries as withdrawn FIFO by id asc
             $remaining = (int) $request->amount;
-            $entries = $member->bonusEntries()
-                ->where('status', 'available')
-                ->orderBy('id')
-                ->get();
 
             foreach ($entries as $entry) {
                 if ($remaining <= 0) break;

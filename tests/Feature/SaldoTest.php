@@ -289,6 +289,21 @@ it('nav anggota dan admin memuat link saldo dan pencairan', function () {
     test()->actingAs(adminPencairan(), 'admin')->get('/admin/pencairan')->assertSee(url('/admin/pencairan'), false);
 });
 
+it('penarikan ditolak kalau saldo sudah terpakai lebih dulu', function () {
+    $member = anggotaUji();
+    $bonus = bonusUji($member, 150000, 'available');
+
+    // Tiru penarikan lain yang sudah memakai bonus ini antara validasi dan transaksi:
+    // saldo yang dibaca di awal masih 150.000, yang terkunci di dalam transaksi 0.
+    $bonus->update(['status' => 'withdrawn']);
+
+    test()->actingAs($member, 'web')->post('/tarik', [
+        'amount' => 150000, 'bank_name' => 'BCA', 'account_number' => '1', 'account_holder' => 'A',
+    ])->assertSessionHasErrors('amount');
+
+    expect(Withdrawal::count())->toBe(0);
+});
+
 function adminPencairan(): Admin
 {
     return Admin::create([
