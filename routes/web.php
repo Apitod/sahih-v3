@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AnggotaController;
+use App\Http\Middleware\CekPencairanAktif;
 use App\Http\Controllers\Admin\FinansialController;
 use App\Http\Controllers\Admin\HadiahAdminController;
 use App\Http\Controllers\Admin\KlaimAdminController;
@@ -44,9 +45,9 @@ Route::middleware(['auth:web', 'active.member'])->group(function () {
     Route::get('/profil', [ProfilController::class, 'edit'])->name('profil.edit');
     Route::post('/profil', [ProfilController::class, 'update'])->name('profil.update');
 
-    Route::get('/saldo', [SaldoController::class, 'index'])->name('saldo');
-    Route::get('/tarik', [SaldoController::class, 'create'])->name('tarik');
-    Route::post('/tarik', [SaldoController::class, 'store'])->name('tarik.store');
+    Route::get('/saldo', [SaldoController::class, 'index'])->middleware(CekPencairanAktif::class)->name('saldo');
+    Route::get('/tarik', [SaldoController::class, 'create'])->middleware(CekPencairanAktif::class)->name('tarik');
+    Route::post('/tarik', [SaldoController::class, 'store'])->middleware(CekPencairanAktif::class)->name('tarik.store');
 
     Route::get('/tukar', [PinRedemptionController::class, 'create'])->name('tukar');
     Route::post('/hadiah/klaim', [KlaimHadiahController::class, 'store'])->name('hadiah.klaim');
@@ -95,6 +96,6 @@ Route::middleware(['auth:admin', 'active.admin'])->prefix('admin')->group(functi
 
     Route::get('/finansial', [FinansialController::class, 'index'])->name('admin.finansial');
 
-    Route::get('/pencairan', [PencairanAdminController::class, 'index'])->name('admin.pencairan');
-    Route::post('/pencairan/{withdrawal}/proses', [PencairanAdminController::class, 'proses'])->name('admin.pencairan.proses');
+    Route::get('/pencairan', [PencairanAdminController::class, 'index'])->middleware(CekPencairanAktif::class)->name('admin.pencairan');
+    Route::post('/pencairan/{withdrawal}/proses', [PencairanAdminController::class, 'proses'])->middleware(CekPencairanAktif::class)->name('admin.pencairan.proses');
 });

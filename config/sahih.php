@@ -64,6 +64,11 @@ return [
     // tidak boleh mengubah hitungan hadiah anggota.
     'milestone_cycle_points' => 3500,
 
+    // Pencairan bonus ke anggota. DITAHAN: DECISIONS #57 dan #67 menyatakan modul
+    // pencairan belum dibangun sampai aturan bonus final. Kerangka kode sudah ada,
+    // tinggal set true setelah Owner mengonfirmasi aturan pencairan.
+    'pencairan_aktif' => env('SAHIH_PENCAIRAN_AKTIF', false),
+
     // Nilai rupiah per poin leadership — internal, tidak ditampilkan ke anggota.
     'leadership_value_per_point' => 40000,
 
