@@ -334,21 +334,21 @@ function adminPencairan(): Admin
     ]);
 }
 
-it('bonus yang baru didapat belum bisa ditarik sampai H+1', function () {
+it('bonus bisa ditarik di hari yang sama saat didapat', function () {
     $member = anggotaUji();
-    bonusUji($member, 200000, 'available', now());          // hari ini — belum boleh
-    bonusUji($member, 150000, 'available', now()->subDay()); // H+1 — boleh
+    bonusUji($member, 200000, 'available', now()); // masuk hari ini, langsung boleh ditarik
 
-    test()->actingAs($member, 'web')->get('/saldo')->assertOk()->assertSee('150.000');
+    test()->actingAs($member, 'web')->get('/tarik')->assertOk()->assertSee('200.000');
 
     test()->actingAs($member, 'web')->post('/tarik', [
         'amount' => 200000,
         'bank_name' => 'BRI',
         'account_number' => '1234567890',
         'account_holder' => 'Anggota Uji',
-    ])->assertSessionHasErrors('amount');
+    ])->assertRedirect('/saldo');
 
-    expect(Withdrawal::count())->toBe(0);
+    expect(Withdrawal::count())->toBe(1)
+        ->and(BonusEntry::where('member_id', $member->id)->where('status', 'withdrawn')->count())->toBe(1);
 });
 
 it('bonus bulanan dijadwalkan tanggal 1 tiap bulan', function () {
@@ -359,9 +359,9 @@ it('bonus bulanan dijadwalkan tanggal 1 tiap bulan', function () {
         ->and($event->expression)->toBe('0 1 1 * *');
 });
 
-it('H+1 dihitung per tanggal: bonus pukul 23.00 kemarin bisa ditarik pagi ini', function () {
+it('bonus pukul 23.00 hari ini tetap bisa ditarik malam itu juga', function () {
     $member = anggotaUji();
-    bonusUji($member, 150000, 'available', now()->subDay()->setTime(23, 0));
+    bonusUji($member, 150000, 'available', now()->setTime(23, 0));
 
     test()->actingAs($member, 'web')->get('/tarik')->assertOk()->assertSee('150.000');
 });
