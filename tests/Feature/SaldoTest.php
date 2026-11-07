@@ -431,3 +431,30 @@ it('penarikan sebagian memecah bonus leadership tanpa bentrok kunci periode', fu
         ->and((int) $anggota->bonusEntries()->sum('amount'))->toBe(2000000)
         ->and((int) $anggota->bonusEntries()->bisaDitarik()->sum('amount'))->toBe(1900000);
 });
+
+it('admin dapat tanda jumlah penarikan yang menunggu diproses', function () {
+    $anggota = anggotaUji();
+    bonusUji($anggota, 500000);
+
+    test()->actingAs($anggota, 'web')->post('/tarik', [
+        'amount' => 100000,
+        'bank_name' => 'BRI',
+        'account_number' => '1234567890',
+        'account_holder' => 'Anggota Uji',
+    ]);
+
+    $admin = adminPencairan();
+    $halaman = test()->actingAs($admin, 'admin')->get('/admin/pencairan');
+    $halaman->assertOk()
+        ->assertSee('data-menunggu-total="1"', false)
+        ->assertSee('data-menunggu="1"', false);
+
+    $w = \App\Models\Withdrawal::first();
+    test()->actingAs($admin, 'admin')->post("/admin/pencairan/{$w->id}/proses", ['status' => 'approved']);
+    test()->actingAs($admin, 'admin')->post("/admin/pencairan/{$w->id}/proses", ['status' => 'paid']);
+
+    test()->actingAs($admin, 'admin')->get('/admin/pencairan')
+        ->assertOk()
+        ->assertDontSee('data-menunggu-total', false)
+        ->assertDontSee('data-menunggu=', false);
+});
