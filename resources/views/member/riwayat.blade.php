@@ -59,6 +59,20 @@
         @endif
     </section>
 
+    {{-- Riwayat Bonus --}}
+    <section class="mt-8" aria-labelledby="judul-bonus">
+        <h2 id="judul-bonus" class="text-lg font-bold text-slate-900">Riwayat Bonus</h2>
+        @if ($bonus->isEmpty())
+            <div class="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 px-4 py-10 text-center">
+                <p class="text-sm font-medium text-slate-700">Belum ada bonus</p>
+                <p class="mt-1 text-sm text-slate-500">Bonus muncul setelah jaringan Anda bertransaksi.</p>
+            </div>
+        @else
+            @include('member._tabel-bonus', ['bonus' => $bonus])
+            <x-paginasi :paginator="$bonus" label="bonus" />
+        @endif
+    </section>
+
     {{-- Riwayat Transaksi --}}
     <section class="mt-8" aria-labelledby="judul-transaksi">
         <h2 id="judul-transaksi" class="text-lg font-bold text-slate-900">Riwayat Transaksi</h2>
