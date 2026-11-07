@@ -15,7 +15,7 @@ class SaldoController extends Controller
     {
         $member = auth('web')->user();
 
-        $saldoAvailable = (int) $member->bonusEntries()->where('status', 'available')->sum('amount');
+        $saldoAvailable = (int) $member->bonusEntries()->bisaDitarik()->sum('amount');
         $totalBonus = (int) $member->bonusEntries()->sum('amount');
         $riwayatBonus = $member->bonusEntries()->latest('id')->paginate(20);
         $riwayatTarik = Withdrawal::where('member_id', $member->id)->latest()->paginate(10);
@@ -26,7 +26,7 @@ class SaldoController extends Controller
     public function create()
     {
         $member = auth('web')->user();
-        $saldoAvailable = (int) $member->bonusEntries()->where('status', 'available')->sum('amount');
+        $saldoAvailable = (int) $member->bonusEntries()->bisaDitarik()->sum('amount');
 
         return view('member.tarik', compact('saldoAvailable'));
     }
@@ -34,7 +34,7 @@ class SaldoController extends Controller
     public function store(Request $request)
     {
         $member = auth('web')->user();
-        $saldoAvailable = (int) $member->bonusEntries()->where('status', 'available')->sum('amount');
+        $saldoAvailable = (int) $member->bonusEntries()->bisaDitarik()->sum('amount');
         $min = (int) config('sahih.withdraw_min', 100000);
 
         $request->validate([
@@ -55,7 +55,7 @@ class SaldoController extends Controller
             // Kunci baris bonus yang akan dipakai. Saldo dibaca di sini, di dalam transaksi,
             // supaya dua permintaan bersamaan tidak sama-sama lolos validasi saldo lama.
             $entries = $member->bonusEntries()
-                ->where('status', 'available')
+                ->bisaDitarik()
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();

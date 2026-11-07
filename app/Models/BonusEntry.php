@@ -15,4 +15,14 @@ class BonusEntry extends Model
 
     public function member() { return $this->belongsTo(Member::class); }
     public function transaction() { return $this->belongsTo(Transaction::class, 'source_transaction_id'); }
+
+    /**
+     * Bonus baru boleh ditarik H+1 setelah bonus didapat (aturan Owner, 8 Nov 2026).
+     * `available_at` kosong (bonus lama) jatuh ke `created_at` supaya tidak hilang.
+     */
+    public function scopeBisaDitarik($query)
+    {
+        return $query->where('status', 'available')
+            ->whereRaw('COALESCE(available_at, created_at) <= ?', [now()->subDay()]);
+    }
 }
