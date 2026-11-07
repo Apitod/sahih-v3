@@ -17,14 +17,12 @@ class BonusEntry extends Model
     public function transaction() { return $this->belongsTo(Transaction::class, 'source_transaction_id'); }
 
     /**
-     * Bonus baru boleh ditarik H+1 setelah bonus didapat (aturan Owner, 8 Nov 2026).
-     * Perbandingan per tanggal, bukan 24 jam bergulir: bonus tanggal 1 bisa ditarik
-     * kapan saja tanggal 2, bukan baru pukul 23.00 kalau bonusnya masuk 23.00.
-     * `available_at` kosong (bonus lama) jatuh ke `created_at`.
+     * Bonus bisa ditarik di hari yang sama saat didapat (keputusan Owner, 8 Nov 2026,
+     * mengikuti BUSINESS_RULES §3 poin 6: bonus cair harian). Tidak ada tenggang H+1.
+     * Dikumpulkan di satu scope supaya aturan ini cuma punya satu tempat.
      */
     public function scopeBisaDitarik($query)
     {
-        return $query->where('status', 'available')
-            ->whereRaw('DATE(COALESCE(available_at, created_at)) <= ?', [today()->subDay()->toDateString()]);
+        return $query->where('status', 'available');
     }
 }
