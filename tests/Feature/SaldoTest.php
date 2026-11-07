@@ -3,6 +3,7 @@
 use App\Models\Admin;
 use App\Models\BonusEntry;
 use App\Models\Member;
+use App\Models\Transaction;
 use App\Models\Withdrawal;
 use Illuminate\Support\Facades\Hash;
 
@@ -364,4 +365,34 @@ it('bonus pukul 23.00 hari ini tetap bisa ditarik malam itu juga', function () {
     bonusUji($member, 150000, 'available', now()->setTime(23, 0));
 
     test()->actingAs($member, 'web')->get('/tarik')->assertOk()->assertSee('150.000');
+});
+
+it('riwayat bonus menampilkan asal bonus, bukan cuma nominal', function () {
+    $member = anggotaUji();
+    $pembeli = anggotaUji();
+    $pembeli->update(['username' => 'pembelitrx']);
+
+    $trx = Transaction::create([
+        'code' => 'TRX-SUMBER', 'type' => 'join', 'member_id' => $pembeli->id,
+        'pin_id' => \App\Models\Pin::create(['code' => 'PIN-SUMBER', 'type' => 'registrasi_upgrade', 'points' => 10, 'price' => 500000])->id, 'points' => 10, 'amount' => 500000,
+        'sponsor_bonus_total' => 25000, 'posted_at' => now(),
+    ]);
+
+    BonusEntry::create([
+        'member_id' => $member->id, 'kind' => 'sponsor', 'amount' => 25000,
+        'status' => 'available', 'source_transaction_id' => $trx->id, 'available_at' => now(),
+    ]);
+    BonusEntry::create([
+        'member_id' => $member->id, 'kind' => 'leadership', 'amount' => 400000,
+        'status' => 'available', 'available_at' => now()->startOfMonth(),
+    ]);
+
+    test()->actingAs($member, 'web')->get('/saldo')->assertOk()
+        ->assertSee('Transaksi #'.$trx->id)
+        ->assertSee('pembelitrx')
+        ->assertSee('Poin PL '.now()->startOfMonth()->translatedFormat('F Y'));
+
+    test()->actingAs($member, 'web')->get('/riwayat')->assertOk()
+        ->assertSee('pembelitrx')
+        ->assertSee('Riwayat Bonus');
 });
