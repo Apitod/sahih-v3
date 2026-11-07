@@ -1,9 +1,13 @@
 <?php
 
 use App\Http\Controllers\Admin\AnggotaController;
+use App\Http\Controllers\Admin\FinansialController;
+use App\Http\Controllers\Admin\HadiahAdminController;
 use App\Http\Controllers\Admin\KlaimAdminController;
+use App\Http\Controllers\Admin\PencairanAdminController;
 use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\PinController;
+use App\Http\Controllers\Admin\TransaksiController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\MemberLoginController;
@@ -13,6 +17,7 @@ use App\Http\Controllers\Member\PinRedemptionController;
 use App\Http\Controllers\Member\PohonController;
 use App\Http\Controllers\Member\ProfilController;
 use App\Http\Controllers\Member\RiwayatController;
+use App\Http\Controllers\Member\SaldoController;
 use App\Http\Controllers\MemberDashboardController;
 use App\Http\Controllers\RegistrasiController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +44,10 @@ Route::middleware(['auth:web', 'active.member'])->group(function () {
     Route::get('/profil', [ProfilController::class, 'edit'])->name('profil.edit');
     Route::post('/profil', [ProfilController::class, 'update'])->name('profil.update');
 
+    Route::get('/saldo', [SaldoController::class, 'index'])->name('saldo');
+    Route::get('/tarik', [SaldoController::class, 'create'])->name('tarik');
+    Route::post('/tarik', [SaldoController::class, 'store'])->name('tarik.store');
+
     Route::get('/tukar', [PinRedemptionController::class, 'create'])->name('tukar');
     Route::post('/hadiah/klaim', [KlaimHadiahController::class, 'store'])->name('hadiah.klaim');
 
@@ -63,6 +72,15 @@ Route::middleware(['auth:admin', 'active.admin'])->prefix('admin')->group(functi
     Route::get('/anggota/{anggota}', [AnggotaController::class, 'show'])->name('admin.anggota.show');
     Route::get('/anggota/{anggota}/edit', [AnggotaController::class, 'edit'])->name('admin.anggota.edit');
     Route::post('/anggota/{anggota}', [AnggotaController::class, 'update'])->name('admin.anggota.update');
+    Route::post('/anggota/{anggota}/reset-password', [AnggotaController::class, 'resetPassword'])->name('admin.anggota.reset-password');
+
+    Route::get('/transaksi', [TransaksiController::class, 'index'])->name('admin.transaksi.index');
+    Route::get('/transaksi/{transaksi}', [TransaksiController::class, 'show'])->name('admin.transaksi.show');
+
+    Route::get('/hadiah', [HadiahAdminController::class, 'index'])->name('admin.hadiah.index');
+    Route::get('/hadiah/{reward}/edit', [HadiahAdminController::class, 'edit'])->name('admin.hadiah.edit');
+    Route::post('/hadiah/{reward}', [HadiahAdminController::class, 'update'])->name('admin.hadiah.update');
+    Route::post('/hadiah', [HadiahAdminController::class, 'store'])->name('admin.hadiah.store');
 
     Route::get('/pin', [PinController::class, 'index'])->name('admin.pin.index');
     Route::get('/pin/baru', [PinController::class, 'create'])->name('admin.pin.create');
@@ -74,4 +92,9 @@ Route::middleware(['auth:admin', 'active.admin'])->prefix('admin')->group(functi
     Route::post('/pengaturan', [PengaturanController::class, 'simpan'])->name('admin.pengaturan.simpan');
     Route::get('/klaim', [KlaimAdminController::class, 'index'])->name('admin.klaim');
     Route::post('/klaim/{klaim}/serahkan', [KlaimAdminController::class, 'serahkan'])->name('admin.klaim.serahkan');
+
+    Route::get('/finansial', [FinansialController::class, 'index'])->name('admin.finansial');
+
+    Route::get('/pencairan', [PencairanAdminController::class, 'index'])->name('admin.pencairan');
+    Route::post('/pencairan/{withdrawal}/proses', [PencairanAdminController::class, 'proses'])->name('admin.pencairan.proses');
 });
