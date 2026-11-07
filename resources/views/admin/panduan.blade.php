@@ -75,7 +75,7 @@
                     Rp 2.000 per poin PL yang diterima Manager langsung di bawah seorang Royal Manager. Tanpa <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">--tahun</code>, yang diproses adalah tahun lalu.</li>
                 <li>Jalankan setelah semua transaksi periode itu selesai tercatat. Poin yang masuk setelah perintah dijalankan untuk periode itu <strong>tidak</strong> ikut terbayar otomatis.</li>
                 <li>Hanya Manager yang pernah RO yang menerima bonus leadership. Poin PL anggota non-Manager hangus, tidak ditabung.</li>
-                <li>Bonus yang masuk hari ini baru bisa ditarik <strong>besok (H+1)</strong>, berlaku untuk semua jenis bonus.</li>
+                <li>Bonus yang masuk <strong>hari ini langsung bisa ditarik hari itu juga</strong>, untuk semua jenis bonus.</li>
                 <li>Modul penarikan saldo masih ditahan: menu Saldo dan Tarik belum tampil sampai penahanannya dibuka.</li>
             </ul>
         </section>
