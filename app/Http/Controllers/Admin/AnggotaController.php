@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Member;
 use Illuminate\Http\Request;
 
@@ -64,6 +65,29 @@ class AnggotaController extends Controller
         return back()->with('status', 'Data anggota berhasil diperbarui.');
     }
 
+    /** Reset sandi oleh admin. Sandi baru tidak pernah dicatat di audit — hanya jejak aksinya. */
+    public function resetPassword(Request $request, Member $anggota)
+    {
+        $data = $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $anggota->forceFill(['password' => bcrypt($data['password'])])->save();
+
+        AuditLog::create([
+            'actor_type' => 'admin',
+            'actor_id' => auth('admin')->id(),
+            'action' => 'anggota.reset_password',
+            'subject_type' => Member::class,
+            'subject_id' => $anggota->id,
+            'before' => null,
+            'after' => ['username' => $anggota->username],
+            'ip' => $request->ip(),
+        ]);
+
+        return back()->with('status', 'Password anggota berhasil direset.');
+    }
+
     private function buildTree($member, int $depth = 20)
     {
         $layers = [];
@@ -72,7 +96,7 @@ class AnggotaController extends Controller
         for ($i = 0; $i < $depth; $i++) {
             $next = Member::whereIn('sponsor_id', $current->pluck('id'))
                 ->orderBy('username')
-                ->get(['id', 'username', 'name', 'rank', 'sponsor_id']);
+                ->get(['id', 'username', 'name', 'rank', 'sponsor_id', 'status']);
 
             if ($next->isEmpty()) break;
 

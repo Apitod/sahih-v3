@@ -163,3 +163,32 @@ it('halaman tukar tidak menampilkan nilai rupiah', function () {
         ->assertDontSee('Rp')
         ->assertDontSee('1.000.000');
 });
+
+// ---------------------------------------------------------------- status downline di pohon
+
+it('pohon member menampilkan badge Aktif dan Beku pada downline', function () {
+    $a = member('reseller');
+    $aktif = member('agent', $a);
+    $beku = member('agent', $a, ['status' => 'suspended']);
+
+    $html = $this->actingAs($a, 'web')->get('/beranda')->assertOk()->getContent();
+
+    expect($html)->toContain('data-status="active"')
+        ->toContain('data-status="suspended"')
+        ->toContain('Aktif')
+        ->toContain('Beku');
+});
+
+it('pohon admin menampilkan badge Beku pada downline yang dibekukan', function () {
+    $admin = \App\Models\Admin::create([
+        'name' => 'Admin Uji', 'email' => 'au'.uniqid().'@uji.local',
+        'password' => bcrypt('rahasia'), 'role' => 'admin', 'is_active' => true,
+    ]);
+    $a = member('reseller');
+    member('agent', $a, ['status' => 'suspended']);
+
+    $this->actingAs($admin, 'admin')->get("/admin/anggota/{$a->id}")
+        ->assertOk()
+        ->assertSee('data-status="suspended"', false)
+        ->assertSee('Beku');
+});

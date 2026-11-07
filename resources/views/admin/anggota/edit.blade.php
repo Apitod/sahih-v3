@@ -71,4 +71,28 @@
             <a href="{{ route('admin.anggota.show', $anggota) }}" class="text-sm text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-slate-900">Kembali</a>
         </div>
     </form>
+
+    <div class="mt-6 rounded-lg border border-red-200 bg-white p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Reset Password</h2>
+        <p class="mt-1 text-xs text-slate-500">Admin menetapkan sandi baru. Sandi tidak ditampilkan lagi setelah disimpan; anggota sebaiknya menggantinya sendiri setelah masuk.</p>
+
+        <form method="POST" action="{{ route('admin.anggota.reset-password', $anggota) }}" class="mt-4 space-y-4">
+            @csrf
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Password baru</span>
+                <input type="password" name="password" autocomplete="new-password" minlength="8"
+                       @error('password') aria-invalid="true" @enderror
+                       class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20">
+                @error('password') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror
+            </label>
+
+            <label class="block">
+                <span class="text-sm font-medium text-slate-700">Ulangi password baru</span>
+                <input type="password" name="password_confirmation" autocomplete="new-password" minlength="8"
+                       class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20">
+            </label>
+
+            <button type="submit" class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Reset Password</button>
+        </form>
+    </div>
 @endsection

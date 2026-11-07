@@ -15,6 +15,11 @@
         <span class="rank-badge rank-{{ $a->rank }}">
             {{ $labelPeringkat[$a->rank] ?? ucfirst($a->rank) }}
         </span>
+        {{-- Status akun: tanpa ini admin/anggota tidak tahu ada downline yang dibekukan. --}}
+        <span data-status="{{ $a->status }}"
+              class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium {{ $a->status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
+            {{ $a->status === 'active' ? 'Aktif' : 'Beku' }}
+        </span>
     </div>
 
     @if ($simpul['anak']->isNotEmpty())

@@ -26,15 +26,20 @@ function member(string $rank = 'reseller', ?Member $sponsor = null, array $attri
 }
 
 /** Memberi poin lewat ledger seperti sistem sungguhan (bukan hanya kolom cache). */
-function givePoints(Member $member, string $kind, int $points): void
+function givePoints(Member $member, string $kind, int $points, ?string $at = null): void
 {
-    \App\Models\PointEntry::create([
+    $entry = \App\Models\PointEntry::create([
         'member_id' => $member->id,
         'kind' => $kind,
         'delta' => $points,
         'source_type' => 'test',
         'note' => 'poin awal untuk uji',
     ]);
+
+    // created_at sengaja tidak fillable (ledger), jadi di-set terpisah untuk uji per periode.
+    if ($at !== null) {
+        $entry->newQuery()->whereKey($entry->getKey())->update(['created_at' => $at]);
+    }
 
     $column = "point_{$kind}";
     $member->{$column} = (int) $member->{$column} + $points;

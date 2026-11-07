@@ -77,7 +77,7 @@ class MemberDashboardController extends Controller
         for ($i = 0; $i < $kedalaman; $i++) {
             $berikut = Member::whereIn('sponsor_id', $tolok->pluck('id')->all())
                 ->orderBy('username')
-                ->get(['id', 'username', 'name', 'rank', 'sponsor_id']);
+                ->get(['id', 'username', 'name', 'rank', 'sponsor_id', 'status']);
 
             if ($berikut->isEmpty()) {
                 break;
@@ -123,7 +123,7 @@ class MemberDashboardController extends Controller
 
             $sekarang = Member::whereIn('sponsor_id', $id)
                 ->orderBy('username')
-                ->get(['id', 'username', 'name', 'rank', 'sponsor_id']);
+                ->get(['id', 'username', 'name', 'rank', 'sponsor_id', 'status']);
 
             if ($sekarang->isEmpty()) {
                 break;

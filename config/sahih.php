@@ -67,6 +67,10 @@ return [
     // Nilai rupiah per poin leadership — internal, tidak ditampilkan ke anggota.
     'leadership_value_per_point' => 40000,
 
+    // Royal Manager: nilai per poin PL yang diterima Manager langsung di bawahnya.
+    // 2.000 = 5% dari 40.000 (BUSINESS_RULES §5). Internal.
+    'royal_manager_value_per_point' => 2000,
+
     // Nilai 1 poin sebagai satuan hitung. Internal, tidak ditampilkan ke anggota.
     'point_unit_value' => 50000,
 

@@ -9,7 +9,7 @@ class BonusEntry extends Model
     public $timestamps = false;
 
     protected $fillable = ['member_id', 'kind', 'amount', 'percent_bp', 'level',
-        'source_transaction_id', 'status', 'available_at'];
+        'source_transaction_id', 'status', 'available_at', 'withdrawal_id'];
 
     protected $casts = ['amount' => 'integer', 'available_at' => 'datetime', 'created_at' => 'datetime'];
 
