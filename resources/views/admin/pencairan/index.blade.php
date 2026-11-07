@@ -37,6 +37,16 @@
         </form>
     </div>
 
+    @php
+        // ponytail: satu query hitung; pindah ke controller kalau nanti ada ringkasan lain.
+        $menunggu = \App\Models\Withdrawal::where('status', 'requested')->count();
+    @endphp
+    @if ($menunggu > 0)
+        <div data-menunggu-total="{{ $menunggu }}" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <strong>{{ $menunggu }} permintaan</strong> menunggu diproses. Transfer manual dulu sesuai nomor rekening, baru tandai <strong>Paid</strong>.
+        </div>
+    @endif
+
     @if (session('sukses'))
         <p role="status" class="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('sukses') }}</p>
     @endif
