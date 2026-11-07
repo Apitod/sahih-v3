@@ -10,4 +10,5 @@ Artisan::command('inspire', function () {
 
 // Tutup buku bonus bulanan = tanggal 1 (keputusan Owner, 8 Nov 2026).
 // Tanpa --bulan, command memproses bulan lalu — tepat setelah bulan itu tutup.
-Schedule::command('sahih:proses-bonus-bulanan')->monthlyOn(1, '01:00');
+// Zona waktu dipatok WITA supaya tanggal 1 tetap tanggal 1 bagi Owner, bukan UTC.
+Schedule::command('sahih:proses-bonus-bulanan')->monthlyOn(1, '01:00')->timezone('Asia/Makassar');
