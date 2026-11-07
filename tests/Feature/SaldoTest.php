@@ -358,3 +358,10 @@ it('bonus bulanan dijadwalkan tanggal 1 tiap bulan', function () {
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('0 1 1 * *');
 });
+
+it('H+1 dihitung per tanggal: bonus pukul 23.00 kemarin bisa ditarik pagi ini', function () {
+    $member = anggotaUji();
+    bonusUji($member, 150000, 'available', now()->subDay()->setTime(23, 0));
+
+    test()->actingAs($member, 'web')->get('/tarik')->assertOk()->assertSee('150.000');
+});

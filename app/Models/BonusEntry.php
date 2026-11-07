@@ -18,11 +18,13 @@ class BonusEntry extends Model
 
     /**
      * Bonus baru boleh ditarik H+1 setelah bonus didapat (aturan Owner, 8 Nov 2026).
-     * `available_at` kosong (bonus lama) jatuh ke `created_at` supaya tidak hilang.
+     * Perbandingan per tanggal, bukan 24 jam bergulir: bonus tanggal 1 bisa ditarik
+     * kapan saja tanggal 2, bukan baru pukul 23.00 kalau bonusnya masuk 23.00.
+     * `available_at` kosong (bonus lama) jatuh ke `created_at`.
      */
     public function scopeBisaDitarik($query)
     {
         return $query->where('status', 'available')
-            ->whereRaw('COALESCE(available_at, created_at) <= ?', [now()->subDay()]);
+            ->whereRaw('DATE(COALESCE(available_at, created_at)) <= ?', [today()->subDay()->toDateString()]);
     }
 }
