@@ -76,7 +76,8 @@
                 <li>Jalankan setelah semua transaksi periode itu selesai tercatat. Poin yang masuk setelah perintah dijalankan untuk periode itu <strong>tidak</strong> ikut terbayar otomatis.</li>
                 <li>Hanya Manager yang pernah RO yang menerima bonus leadership. Poin PL anggota non-Manager hangus, tidak ditabung.</li>
                 <li>Bonus yang masuk <strong>hari ini langsung bisa ditarik hari itu juga</strong>, untuk semua jenis bonus.</li>
-                <li>Modul penarikan saldo masih ditahan: menu Saldo dan Tarik belum tampil sampai penahanannya dibuka.</li>
+                <li>Penarikan saldo aktif: menu Saldo dan Tarik tampil untuk anggota. Matikan lewat <code>SAHIH_PENCAIRAN_AKTIF=false</code> di <code>.env</code>.</li>
+                <li>Riwayat bonus menampilkan kolom <strong>Sumber</strong>: nomor transaksi dan anggota pembeli untuk sponsor/selisih, atau periode PL untuk leadership dan RM.</li>
             </ul>
         </section>
 
