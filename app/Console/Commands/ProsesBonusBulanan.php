@@ -8,6 +8,7 @@ use App\Models\PointEntry;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -81,13 +82,20 @@ class ProsesBonusBulanan extends Command
 
                 $amount = $pl * $nilai;
 
-                BonusEntry::create([
-                    'member_id' => $id,
-                    'kind' => 'leadership',
-                    'amount' => $amount,
-                    'status' => 'available',
-                    'available_at' => $awal,
-                ]);
+                try {
+                    BonusEntry::create([
+                        'member_id' => $id,
+                        'kind' => 'leadership',
+                        'amount' => $amount,
+                        'status' => 'available',
+                        'available_at' => $awal,
+                    ]);
+                } catch (UniqueConstraintViolationException) {
+                    // Proses lain sudah menulis periode ini lebih dulu; biarkan dia yang menang.
+                    $dilewati++;
+
+                    continue;
+                }
 
                 $diproses++;
                 $rupiah += $amount;

@@ -3,6 +3,7 @@
 use App\Models\Pin;
 use App\Models\Transaction;
 use App\Models\BonusEntry;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Artisan;
 
 function buatPin(string $type = 'ro'): Pin
@@ -131,4 +132,45 @@ test('proses bonus RM idempoten', function () {
     Artisan::call('sahih:proses-bonus-rm-tahunan', ['--tahun' => '2026']);
 
     expect(BonusEntry::where('member_id', $rm->id)->where('kind', 'rm')->count())->toBe(1);
+});
+
+// ---------------------------------------------------------------- kunci periode di level DB
+
+test('database menolak bonus leadership kedua untuk member dan bulan yang sama', function () {
+    $m = member('manager', null, ['is_manager' => true]);
+
+    $buat = fn () => BonusEntry::create([
+        'member_id' => $m->id, 'kind' => 'leadership', 'amount' => 400000,
+        'status' => 'available', 'available_at' => '2026-10-01 00:00:00',
+    ]);
+
+    $buat();
+
+    expect($buat)->toThrow(UniqueConstraintViolationException::class);
+});
+
+test('database menolak bonus rm kedua untuk member dan tahun yang sama', function () {
+    $m = member('manager', null, ['is_manager' => true]);
+
+    $buat = fn () => BonusEntry::create([
+        'member_id' => $m->id, 'kind' => 'rm', 'amount' => 2000,
+        'status' => 'available', 'available_at' => '2026-01-01 00:00:00',
+    ]);
+
+    $buat();
+
+    expect($buat)->toThrow(UniqueConstraintViolationException::class);
+});
+
+test('kunci periode tidak mengganggu bonus sponsor yang tanggalnya sama', function () {
+    $m = member('reseller');
+
+    foreach ([50000, 25000] as $amount) {
+        BonusEntry::create([
+            'member_id' => $m->id, 'kind' => 'sponsor', 'amount' => $amount,
+            'status' => 'available', 'available_at' => '2026-10-01 00:00:00',
+        ]);
+    }
+
+    expect(BonusEntry::where('member_id', $m->id)->where('kind', 'sponsor')->count())->toBe(2);
 });

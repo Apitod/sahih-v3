@@ -72,7 +72,8 @@ class SaldoController extends Controller
                 if ($remaining <= 0) break;
                 if ($entry->amount > $remaining) {
                     // Pecah: sisa jadi baris baru yang tetap available; total bonus tidak berubah.
-                    $sisa = $entry->replicate();
+                    // Kolom generated (periode_kunci) tidak boleh ikut tersalin — DB yang menghitung.
+                    $sisa = $entry->replicate(['periode_kunci']);
                     $sisa->amount = $entry->amount - $remaining;
                     $sisa->save();
                     $entry->amount = $remaining;
