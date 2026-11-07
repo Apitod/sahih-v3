@@ -86,8 +86,11 @@ class SaldoController extends Controller
                 if ($entry->amount > $remaining) {
                     // Pecah: sisa jadi baris baru yang tetap available; total bonus tidak berubah.
                     // Kolom generated (periode_kunci) tidak boleh ikut tersalin — DB yang menghitung.
-                    $sisa = $entry->replicate(['periode_kunci']);
+                    $sisa = $entry->replicate(['periode_kunci', 'withdrawal_id']);
                     $sisa->amount = $entry->amount - $remaining;
+                    // Tandai sebagai pecahan supaya tidak bentrok dengan kunci unik
+                    // periode bonus (member_id, kind, available_at) milik baris asli.
+                    $sisa->split_dari_id = $entry->id;
                     $sisa->save();
                     $entry->amount = $remaining;
                 }
