@@ -38,9 +38,9 @@ class DatabaseSeeder extends Seeder
 
         $password = (string) config('sahih.admin_password');
 
-        if (app()->environment('production') && str_contains($password, 'admin123')) {
+        if (app()->environment('production') && ($password === '' || $password === 'admin123')) {
             throw new RuntimeException(
-                'ADMIN_PASSWORD belum diisi di .env produksi. Isi password kuat lalu ulangi seed.'
+                'ADMIN_PASSWORD di .env masih kosong atau "admin123". Ganti dengan password kuat lalu ulangi seed.'
             );
         }
 
