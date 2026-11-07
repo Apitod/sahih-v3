@@ -69,4 +69,9 @@ return [
 
     // Nilai 1 poin sebagai satuan hitung. Internal, tidak ditampilkan ke anggota.
     'point_unit_value' => 50000,
+
+    // Akun admin pertama dari seeder. Dibaca lewat config supaya tetap jalan
+    // setelah `php artisan config:cache` (env() langsung jadi null saat itu).
+    'admin_email' => env('ADMIN_EMAIL', 'admin@sahih.local'),
+    'admin_password' => env('ADMIN_PASSWORD', 'admin123'),
 ];

@@ -8,6 +8,7 @@ use App\Models\MilestoneReward;
 use App\Models\PointEntry;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,21 +16,37 @@ class DatabaseSeeder extends Seeder
     {
         $this->admin();
         $this->hadiah();
-        $this->anggotaContoh();
+
+        // Anggota contoh hanya untuk lokal. Di produksi jangan bikin akun palsu.
+        if (! app()->environment('production')) {
+            $this->anggotaContoh();
+        }
     }
 
-    /** Akun admin pertama. Password tetap untuk pengembangan lokal — WAJIB diganti sebelum produksi. */
+    /**
+     * Akun admin pertama. Email & password diambil dari config/sahih.php yang
+     * membaca ADMIN_EMAIL / ADMIN_PASSWORD dari .env. Tanpa env, jatuh ke
+     * kredensial pengembangan — dan di produksi seeder menolak jalan.
+     */
     private function admin(): void
     {
-        if (Admin::where('email', 'admin@sahih.local')->exists()) {
+        $email = (string) config('sahih.admin_email');
+
+        if (Admin::where('email', $email)->exists()) {
             return;
         }
 
-        $password = 'admin123';
+        $password = (string) config('sahih.admin_password');
+
+        if (app()->environment('production') && str_contains($password, 'admin123')) {
+            throw new RuntimeException(
+                'ADMIN_PASSWORD belum diisi di .env produksi. Isi password kuat lalu ulangi seed.'
+            );
+        }
 
         Admin::create([
             'name' => 'Admin Sahih',
-            'email' => 'admin@sahih.local',
+            'email' => $email,
             'password' => Hash::make($password),
             'role' => 'superadmin',
             'is_active' => true,
@@ -37,7 +54,7 @@ class DatabaseSeeder extends Seeder
 
         // HOME bisa kosong di cron/container: tanpa cadangan, path jadi '/.sahih-...'
         // dan password hilang setelah baris admin terlanjur dibuat.
-        $isi = "email: admin@sahih.local\npassword: {$password}\n";
+        $isi = "email: {$email}\npassword: {$password}\n";
         $path = (getenv('HOME') ?: sys_get_temp_dir()).'/.sahih-admin-credentials';
 
         if (@file_put_contents($path, $isi) === false) {
