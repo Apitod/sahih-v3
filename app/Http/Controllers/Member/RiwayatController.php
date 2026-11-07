@@ -21,6 +21,11 @@ class RiwayatController extends Controller
             ->latest('posted_at')
             ->paginate(15, ['*'], 'trx');
 
-        return view('member.riwayat', compact('poin', 'transaksi'));
+        $bonus = $member->bonusEntries()
+            ->with('transaction.member')
+            ->latest('id')
+            ->paginate(15, ['*'], 'bonus');
+
+        return view('member.riwayat', compact('poin', 'transaksi', 'bonus'));
     }
 }

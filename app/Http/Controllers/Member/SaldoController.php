@@ -17,7 +17,7 @@ class SaldoController extends Controller
 
         $saldoAvailable = (int) $member->bonusEntries()->bisaDitarik()->sum('amount');
         $totalBonus = (int) $member->bonusEntries()->sum('amount');
-        $riwayatBonus = $member->bonusEntries()->latest('id')->paginate(20);
+        $riwayatBonus = $member->bonusEntries()->with('transaction.member')->latest('id')->paginate(20);
         $riwayatTarik = Withdrawal::where('member_id', $member->id)->latest()->paginate(10);
 
         return view('member.saldo', compact('saldoAvailable', 'totalBonus', 'riwayatBonus', 'riwayatTarik'));
