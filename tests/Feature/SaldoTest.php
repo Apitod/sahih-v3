@@ -28,14 +28,15 @@ function anggotaUji(): Member
     ]);
 }
 
-function bonusUji(Member $member, int $amount, string $status = 'available'): BonusEntry
+function bonusUji(Member $member, int $amount, string $status = 'available', $at = null): BonusEntry
 {
+    // Default H+1 sudah lewat (2 hari lalu) supaya bonus bisa ditarik.
     return BonusEntry::create([
         'member_id' => $member->id,
         'kind' => 'sponsor',
         'amount' => $amount,
         'status' => $status,
-        'available_at' => now(),
+        'available_at' => $at ?? now()->subDays(2),
         'created_at' => now(),
     ]);
 }
@@ -332,3 +333,28 @@ function adminPencairan(): Admin
         'password' => Hash::make('rahasia'), 'role' => 'admin', 'is_active' => true,
     ]);
 }
+
+it('bonus yang baru didapat belum bisa ditarik sampai H+1', function () {
+    $member = anggotaUji();
+    bonusUji($member, 200000, 'available', now());          // hari ini — belum boleh
+    bonusUji($member, 150000, 'available', now()->subDay()); // H+1 — boleh
+
+    test()->actingAs($member, 'web')->get('/saldo')->assertOk()->assertSee('150.000');
+
+    test()->actingAs($member, 'web')->post('/tarik', [
+        'amount' => 200000,
+        'bank_name' => 'BRI',
+        'account_number' => '1234567890',
+        'account_holder' => 'Anggota Uji',
+    ])->assertSessionHasErrors('amount');
+
+    expect(Withdrawal::count())->toBe(0);
+});
+
+it('bonus bulanan dijadwalkan tanggal 1 tiap bulan', function () {
+    $event = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+        ->first(fn ($e) => str_contains($e->command, 'sahih:proses-bonus-bulanan'));
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('0 1 1 * *');
+});

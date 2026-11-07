@@ -206,7 +206,7 @@ it('halaman saldo dan tarik menampilkan nominal rupiah', function () {
     $a = member('reseller');
     BonusEntry::create([
         'member_id' => $a->id, 'kind' => 'sponsor', 'amount' => 1250000,
-        'status' => 'available',
+        'status' => 'available', 'available_at' => now()->subDays(2), // bonus H+1 sudah lewat
     ]);
 
     $this->actingAs($a, 'web')->get('/saldo')
