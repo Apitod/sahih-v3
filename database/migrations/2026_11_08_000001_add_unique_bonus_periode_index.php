@@ -18,10 +18,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // MariaDB tidak mendukung index pada generated column bertipe VARCHAR tanpa
-        // panjang — CHAR(7) cukup untuk 'leadership' dan 'rm'.
+        // VARCHAR(20): nilai 'leadership' 10 karakter. CHAR(7) sempat dipakai dan membuat
+        // SETIAP insert bonus leadership gagal di MariaDB ("String data, right truncated");
+        // sqlite tidak menegakkan panjang CHAR, jadi 296 test hijau tanpa menangkapnya.
         DB::statement("ALTER TABLE bonus_entries
-            ADD COLUMN periode_kunci CHAR(7)
+            ADD COLUMN periode_kunci VARCHAR(20)
             GENERATED ALWAYS AS (CASE WHEN kind IN ('leadership','rm') THEN kind END) VIRTUAL");
 
         Schema::table('bonus_entries', function (Blueprint $table) {

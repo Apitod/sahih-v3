@@ -7,6 +7,7 @@ use App\Models\BonusEntry;
 use App\Models\Withdrawal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PencairanAdminController extends Controller
 {
@@ -26,25 +27,36 @@ class PencairanAdminController extends Controller
     public function proses(Request $request, Withdrawal $withdrawal)
     {
         $request->validate([
-            'status' => [
-                'required',
-                'in:approved,paid,rejected',
-                function ($attr, $val, $fail) use ($withdrawal) {
-                    $allowed = match ($withdrawal->status) {
-                        'requested' => ['approved', 'rejected'],
-                        'approved' => ['paid'],
-                        default => [],
-                    };
-                    if (!in_array($val, $allowed)) {
-                        $fail('Status transition not allowed.');
-                    }
-                },
-            ],
-            'note' => ['required_if:status,rejected', 'nullable', 'string', 'max:500'],
-        ], ['note.required_if' => 'Catatan wajib diisi untuk penolakan.']);
+            'status' => 'required|in:approved,paid,rejected',
+            'note' => 'nullable|string|max:500',
+        ]);
 
         DB::transaction(function () use ($request, $withdrawal) {
-            $withdrawal->update([
+            // Kunci baris sebelum cek transisi: dua admin yang memproses bersamaan tidak
+            // boleh sama-sama lolos validasi status yang sudah basi.
+            $terkunci = Withdrawal::whereKey($withdrawal->getKey())->lockForUpdate()->firstOrFail();
+
+            $allowed = match ($terkunci->status) {
+                'requested' => ['approved', 'rejected'],
+                'approved' => ['paid'],
+                default => [],
+            };
+
+            if (! in_array($request->status, $allowed, true)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Status transition not allowed.',
+                ]);
+            }
+
+            // Catatan baru wajib dicek setelah transisi sah, supaya penolakan yang memang
+            // tidak boleh dilakukan tetap ditolak karena statusnya, bukan karena catatannya.
+            if ($request->status === 'rejected' && trim((string) $request->note) === '') {
+                throw ValidationException::withMessages([
+                    'note' => 'Catatan wajib diisi untuk penolakan.',
+                ]);
+            }
+
+            $terkunci->update([
                 'status' => $request->status,
                 'processed_by' => auth('admin')->id(),
                 'processed_at' => now(),
@@ -53,7 +65,7 @@ class PencairanAdminController extends Controller
 
             // Restore bonus entries if rejected
             if ($request->status === 'rejected') {
-                BonusEntry::where('withdrawal_id', $withdrawal->id)
+                BonusEntry::where('withdrawal_id', $terkunci->id)
                     ->update(['status' => 'available', 'withdrawal_id' => null]);
             }
         });

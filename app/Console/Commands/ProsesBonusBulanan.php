@@ -72,7 +72,7 @@ class ProsesBonusBulanan extends Command
                 }
 
                 $ada = BonusEntry::where('member_id', $id)->where('kind', 'leadership')
-                    ->where('available_at', $awal)->exists();
+                    ->whereDate('available_at', $awal)->exists();
 
                 if ($ada) {
                     $dilewati++;

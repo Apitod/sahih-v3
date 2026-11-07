@@ -79,7 +79,7 @@ class ProsesBonusRmTahunan extends Command
                 }
 
                 $ada = BonusEntry::where('member_id', $rm->id)->where('kind', 'rm')
-                    ->where('available_at', $awal)->exists();
+                    ->whereDate('available_at', $awal)->exists();
 
                 if ($ada) {
                     continue;

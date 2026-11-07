@@ -5,6 +5,7 @@ use App\Models\Transaction;
 use App\Models\BonusEntry;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
 function buatPin(string $type = 'ro'): Pin
 {
@@ -173,4 +174,28 @@ test('kunci periode tidak mengganggu bonus sponsor yang tanggalnya sama', functi
     }
 
     expect(BonusEntry::where('member_id', $m->id)->where('kind', 'sponsor')->count())->toBe(2);
+});
+
+/**
+ * Kolom generated periode_kunci pernah dibuat CHAR(7) — terlalu pendek untuk
+ * 'leadership' (10 karakter). MariaDB menolak setiap insert dengan "String data,
+ * right truncated" sementara sqlite diam saja, sehingga bug ini hanya ketahuan
+ * saat dijalankan di DB sungguhan.
+ */
+test('kolom kunci periode cukup panjang untuk semua jenis bonus yang dikunci', function () {
+    // sqlite tidak punya information_schema dan tidak membatasi panjang VARCHAR.
+    if (DB::getDriverName() !== 'mysql') {
+        expect(true)->toBeTrue();
+
+        return;
+    }
+
+    $panjang = DB::selectOne(
+        'SELECT CHARACTER_MAXIMUM_LENGTH AS p FROM information_schema.COLUMNS
+         WHERE TABLE_NAME = ? AND COLUMN_NAME = ?',
+        ['bonus_entries', 'periode_kunci']
+    );
+
+    expect($panjang)->not->toBeNull()
+        ->and((int) $panjang->p)->toBeGreaterThanOrEqual(strlen('leadership'));
 });

@@ -61,10 +61,26 @@
             </ul>
         </section>
 
+        <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-xl font-bold text-slate-900">Menutup Buku Bonus</h2>
+            <p class="mt-2 text-sm text-slate-700">
+                Belum ada tanggal tutup buku resmi, jadi bonus dijalankan manual lewat perintah di bawah.
+                Keduanya aman dijalankan berulang: bonus untuk periode yang sudah diproses akan dilewati, tidak dobel.
+            </p>
+            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
+                <li><strong>Bonus leadership bulanan</strong> — <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">php artisan sahih:proses-bonus-bulanan --bulan=2026-10</code><br>
+                    Mengubah poin PL Manager menjadi bonus Rp 40.000 per poin. Tanpa <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">--bulan</code>, yang diproses adalah bulan lalu.</li>
+                <li><strong>Bonus Royal Manager tahunan</strong> — <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">php artisan sahih:proses-bonus-rm-tahunan --tahun=2026</code><br>
+                    Rp 2.000 per poin PL yang diterima Manager langsung di bawah seorang Royal Manager. Tanpa <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">--tahun</code>, yang diproses adalah tahun lalu.</li>
+                <li>Jalankan setelah semua transaksi periode itu selesai tercatat. Poin yang masuk setelah perintah dijalankan untuk periode itu <strong>tidak</strong> ikut terbayar otomatis.</li>
+                <li>Hanya Manager yang pernah RO yang menerima bonus leadership. Poin PL anggota non-Manager hangus, tidak ditabung.</li>
+            </ul>
+        </section>
+
         <section class="rounded-lg border border-amber-200 bg-amber-50 p-6">
             <h2 class="text-lg font-bold text-amber-900">Yang Perlu Diperhatikan</h2>
             <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-amber-900">
-                <li>Nilai rupiah tidak boleh tampil di halaman anggota.</li>
+                <li>Nilai rupiah tidak tampil di Beranda dan halaman Tukar PIN. Halaman <strong>Saldo</strong> dan <strong>Tarik</strong> justru wajib menampilkan rupiah — anggota perlu tahu berapa yang bisa ditarik.</li>
                 <li>Perubahan pengaturan hanya berlaku untuk transaksi berikutnya, bukan yang sudah tercatat.</li>
                 <li>Setiap perubahan penting tercatat di jejak audit.</li>
             </ul>
