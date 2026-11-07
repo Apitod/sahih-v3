@@ -23,7 +23,9 @@ use Illuminate\Support\Facades\DB;
  */
 class ProsesBonusBulanan extends Command
 {
-    protected $signature = 'sahih:proses-bonus-bulanan {--bulan= : Periode YYYY-MM (default bulan lalu)}';
+    protected $signature = 'sahih:proses-bonus-bulanan
+        {--bulan= : Periode YYYY-MM (default bulan lalu)}
+        {--hitung-ulang : Sesuaikan bonus periode ini dengan poin PL terbaru (selisihnya saja)}';
 
     protected $description = 'Konversi poin PL Manager jadi bonus leadership untuk satu bulan';
 
@@ -57,11 +59,12 @@ class ProsesBonusBulanan extends Command
         $sudahRo = Transaction::where('type', 'ro')->whereIn('member_id', $managerIds)
             ->distinct()->pluck('member_id');
 
+        $hitungUlang = (bool) $this->option('hitung-ulang');
         $diproses = 0;
         $dilewati = 0;
         $rupiah = 0;
 
-        DB::transaction(function () use ($totalPl, $managerIds, $sudahRo, $nilai, $awal, &$diproses, &$dilewati, &$rupiah) {
+        DB::transaction(function () use ($totalPl, $managerIds, $sudahRo, $nilai, $awal, $hitungUlang, &$diproses, &$dilewati, &$rupiah) {
             foreach ($managerIds as $id) {
                 $pl = (int) $totalPl[$id];
 
@@ -72,10 +75,39 @@ class ProsesBonusBulanan extends Command
                 }
 
                 $ada = BonusEntry::where('member_id', $id)->where('kind', 'leadership')
-                    ->whereDate('available_at', $awal)->exists();
+                    ->whereDate('available_at', $awal)->first();
 
                 if ($ada) {
-                    $dilewati++;
+                    // Tanpa --hitung-ulang, periode yang sudah diproses dilewati.
+                    if (! $hitungUlang) {
+                        $dilewati++;
+
+                        continue;
+                    }
+
+                    // Dengan --hitung-ulang: hanya selisih yang ditambahkan, jadi poin yang
+                    // masuk setelah proses pertama tetap terbayar tanpa membayar dua kali.
+                    $seharusnya = $pl * $nilai;
+                    $selisih = $seharusnya - (int) $ada->amount;
+
+                    if ($selisih <= 0) {
+                        $dilewati++;
+
+                        continue;
+                    }
+
+                    // Nominal hanya bisa disesuaikan selagi bonus belum disentuh anggota.
+                    // Yang sudah withdrawn/void dibiarkan; admin perlu tindakan manual.
+                    if ($ada->status === 'available') {
+                        $ada->update(['amount' => $seharusnya]);
+                    } else {
+                        $this->warn("  {$id}: bonus periode ini sudah {$ada->status}, selisih Rp" . number_format($selisih, 0, ',', '.') . ' tidak ditambahkan otomatis.');
+
+                        continue;
+                    }
+
+                    $diproses++;
+                    $rupiah += $selisih;
 
                     continue;
                 }

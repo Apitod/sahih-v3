@@ -199,3 +199,65 @@ test('kolom kunci periode cukup panjang untuk semua jenis bonus yang dikunci', f
     expect($panjang)->not->toBeNull()
         ->and((int) $panjang->p)->toBeGreaterThanOrEqual(strlen('leadership'));
 });
+
+// ---------------------------------------------------------------- hitung ulang periode
+
+test('tanpa hitung-ulang, poin PL yang masuk belakangan tidak terbayar', function () {
+    $manager = member('manager', null, ['is_manager' => true]);
+    buatTrxRo($manager);
+
+    givePoints($manager, 'pl', 10, '2026-10-05 10:00:00');
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10']);
+
+    // Poin susulan setelah proses pertama.
+    givePoints($manager, 'pl', 5, '2026-10-20 10:00:00');
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10']);
+
+    expect(BonusEntry::where('member_id', $manager->id)->where('kind', 'leadership')->sum('amount'))
+        ->toBe(10 * 40000);
+});
+
+test('hitung-ulang menambah selisih poin PL susulan tanpa membayar dua kali', function () {
+    $manager = member('manager', null, ['is_manager' => true]);
+    buatTrxRo($manager);
+
+    givePoints($manager, 'pl', 10, '2026-10-05 10:00:00');
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10']);
+
+    givePoints($manager, 'pl', 5, '2026-10-20 10:00:00');
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10', '--hitung-ulang' => true]);
+
+    $bonus = BonusEntry::where('member_id', $manager->id)->where('kind', 'leadership')->get();
+
+    expect($bonus)->toHaveCount(1)
+        ->and((int) $bonus->first()->amount)->toBe(15 * 40000);
+});
+
+test('hitung-ulang tidak menambah apa pun kalau poin tidak berubah', function () {
+    $manager = member('manager', null, ['is_manager' => true]);
+    buatTrxRo($manager);
+
+    givePoints($manager, 'pl', 10, '2026-10-05 10:00:00');
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10']);
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10', '--hitung-ulang' => true]);
+
+    expect(BonusEntry::where('member_id', $manager->id)->where('kind', 'leadership')->sum('amount'))
+        ->toBe(10 * 40000);
+});
+
+test('hitung-ulang tidak menyentuh bonus yang sudah ditarik anggota', function () {
+    $manager = member('manager', null, ['is_manager' => true]);
+    buatTrxRo($manager);
+
+    givePoints($manager, 'pl', 10, '2026-10-05 10:00:00');
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10']);
+
+    BonusEntry::where('member_id', $manager->id)->where('kind', 'leadership')
+        ->update(['status' => 'withdrawn']);
+
+    givePoints($manager, 'pl', 5, '2026-10-20 10:00:00');
+    Artisan::call('sahih:proses-bonus-bulanan', ['--bulan' => '2026-10', '--hitung-ulang' => true]);
+
+    expect(BonusEntry::where('member_id', $manager->id)->where('kind', 'leadership')->sum('amount'))
+        ->toBe(10 * 40000);
+});
