@@ -396,3 +396,38 @@ it('riwayat bonus menampilkan asal bonus, bukan cuma nominal', function () {
         ->assertSee('pembelitrx')
         ->assertSee('Riwayat Bonus');
 });
+
+it('penarikan sebagian memecah bonus leadership tanpa bentrok kunci periode', function () {
+    // Kunci unik (member_id, kind, available_at) mencegah bonus periode dobel,
+    // tapi sempat ikut menolak baris sisa hasil pecahan → 500 saat tarik sebagian.
+    $anggota = anggotaUji();
+
+    $bonus = BonusEntry::create([
+        'member_id' => $anggota->id,
+        'kind' => 'leadership',
+        'amount' => 2000000,
+        'status' => 'available',
+        'available_at' => '2026-10-01 00:00:00',
+    ]);
+
+    test()->actingAs($anggota, 'web')
+        ->post('/tarik', [
+            'amount' => 100000,
+            'bank_name' => 'BRI',
+            'account_number' => '1234567890',
+            'account_holder' => 'Anggota Uji',
+        ])
+        ->assertRedirect(route('saldo'))
+        ->assertSessionHasNoErrors();
+
+    $baris = $anggota->bonusEntries()->orderBy('id')->get();
+
+    expect($baris)->toHaveCount(2)
+        ->and((int) $baris[0]->amount)->toBe(100000)
+        ->and($baris[0]->status)->toBe('withdrawn')
+        ->and((int) $baris[1]->amount)->toBe(1900000)
+        ->and($baris[1]->status)->toBe('available')
+        ->and($baris[1]->split_dari_id)->toBe($baris[0]->id)
+        ->and((int) $anggota->bonusEntries()->sum('amount'))->toBe(2000000)
+        ->and((int) $anggota->bonusEntries()->bisaDitarik()->sum('amount'))->toBe(1900000);
+});
