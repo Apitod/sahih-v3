@@ -11,8 +11,13 @@ cd "$APP_DIR"
 echo "==> Tarik kode terbaru"
 git pull --ff-only
 
+# --no-scripts: cPanel mematikan proc_open, sehingga Composer gagal saat
+# menjalankan post-autoload-dump. package:discover dipanggil manual di bawah.
 echo "==> Pasang dependensi produksi"
-composer install --no-dev --optimize-autoloader --no-interaction
+composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+echo "==> Daftarkan paket"
+"$PHP_BIN" artisan package:discover --ansi
 
 echo "==> Migrasi database"
 "$PHP_BIN" artisan migrate --force
