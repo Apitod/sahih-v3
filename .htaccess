@@ -1,0 +1,10 @@
+# Redirect semua request ke public/index.php
+# Laravel di public_html/
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Laravel 12 - public/index.php sudah handle semua route
