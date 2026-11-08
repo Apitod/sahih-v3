@@ -73,6 +73,7 @@ Route::middleware(['auth:admin', 'active.admin'])->prefix('admin')->group(functi
     Route::get('/anggota/{anggota}', [AnggotaController::class, 'show'])->name('admin.anggota.show');
     Route::get('/anggota/{anggota}/edit', [AnggotaController::class, 'edit'])->name('admin.anggota.edit');
     Route::post('/anggota/{anggota}', [AnggotaController::class, 'update'])->name('admin.anggota.update');
+    Route::delete('/anggota/{anggota}', [AnggotaController::class, 'destroy'])->name('admin.anggota.destroy');
     Route::post('/anggota/{anggota}/reset-password', [AnggotaController::class, 'resetPassword'])->name('admin.anggota.reset-password');
 
     Route::get('/transaksi', [TransaksiController::class, 'index'])->name('admin.transaksi.index');
