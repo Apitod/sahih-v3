@@ -171,3 +171,9 @@ it('anggota yang sudah login tidak bisa membuka form registrasi', function () {
 
     $this->actingAs($m, 'web')->get('/daftar')->assertRedirect();
 });
+
+it('mengalihkan www ke domain utama agar cookie sesi tidak terpecah', function () {
+    test()->get('http://www.contoh.test/daftar')
+        ->assertStatus(301)
+        ->assertRedirect('http://contoh.test/daftar');
+});
