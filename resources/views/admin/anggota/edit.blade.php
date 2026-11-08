@@ -95,4 +95,19 @@
             <button type="submit" class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Reset Password</button>
         </form>
     </div>
+
+    {{-- Hapus: hanya untuk akun tanpa jejak. Server tetap menolak kalau ada poin/bonus/downline. --}}
+    <div class="mt-6 rounded-lg border border-slate-300 bg-slate-50 p-5">
+        <h2 class="text-base font-bold text-slate-900">Hapus Anggota</h2>
+        <p class="mt-1 text-xs text-slate-600">Hanya akun yang belum punya poin, bonus, pencairan, klaim hadiah, atau downline. Kalau sudah ada jejak, pakai <strong>Status akun → Dibekukan</strong>.</p>
+
+        @error('hapus') <p class="mt-2 text-xs font-semibold text-red-600">{{ $message }}</p> @enderror
+
+        <form method="POST" action="{{ route('admin.anggota.destroy', $anggota) }}" class="mt-4"
+              onsubmit="return confirm('Hapus anggota {{ $anggota->username }}? Tindakan ini tidak bisa dibatalkan dari halaman ini.')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="rounded-lg border border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50">Hapus Anggota</button>
+        </form>
+    </div>
 @endsection
