@@ -65,6 +65,44 @@ class AnggotaController extends Controller
         return back()->with('status', 'Data anggota berhasil diperbarui.');
     }
 
+    /**
+     * Hapus anggota. Hanya akun tanpa jejak: begitu ada poin, bonus, pencairan,
+     * klaim hadiah, atau downline, barisnya tidak boleh hilang — cukup nonaktifkan
+     * (status suspended) lewat Edit. Jejak audit tetap ditulis walau baris di-soft-delete.
+     */
+    public function destroy(Request $request, Member $anggota)
+    {
+        $alasan = match (true) {
+            $anggota->downlines()->exists() => 'masih punya downline',
+            $anggota->pointEntries()->exists() => 'sudah punya riwayat poin',
+            $anggota->bonusEntries()->exists() => 'sudah punya riwayat bonus',
+            \App\Models\Withdrawal::where('member_id', $anggota->id)->exists() => 'sudah pernah mengajukan pencairan',
+            $anggota->milestoneClaims()->exists() => 'sudah pernah klaim hadiah',
+            default => null,
+        };
+
+        if ($alasan !== null) {
+            return back()->withErrors([
+                'hapus' => "Tidak bisa dihapus: {$alasan}. Pakai Edit → Status akun → suspended.",
+            ]);
+        }
+
+        AuditLog::create([
+            'actor_type' => 'admin',
+            'actor_id' => auth('admin')->id(),
+            'action' => 'anggota.hapus',
+            'subject_type' => Member::class,
+            'subject_id' => $anggota->id,
+            'before' => ['username' => $anggota->username, 'name' => $anggota->name],
+            'after' => null,
+            'ip' => $request->ip(),
+        ]);
+
+        $anggota->delete();
+
+        return redirect()->route('admin.anggota.index')->with('status', "Anggota {$anggota->username} dihapus.");
+    }
+
     /** Reset sandi oleh admin. Sandi baru tidak pernah dicatat di audit — hanya jejak aksinya. */
     public function resetPassword(Request $request, Member $anggota)
     {
