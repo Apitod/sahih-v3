@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Member extends Authenticatable
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'username', 'name', 'phone', 'address', 'nik_ktp', 'password', 'sponsor_id',
         'rank', 'is_manager', 'manager_since', 'point_pa', 'point_pr', 'point_pl',
