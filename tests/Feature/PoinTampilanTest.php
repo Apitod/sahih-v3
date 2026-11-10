@@ -30,3 +30,13 @@ it('PR 7.100 di kartu jadi 100, PR 7.000 jadi 0', function () {
 
     expect($response->viewData('poin'))->pr->toBe(0);
 });
+
+it('total poin status tetap angka asli walau kartu dibatasi', function () {
+    $member = member('reseller');
+    givePoints($member, 'pa', 25);
+    givePoints($member, 'pr', 7100);
+
+    $response = test()->actingAs($member, 'web')->get('/beranda');
+
+    expect($response->viewData('status')['total_poin'])->toBe(7125);
+});
