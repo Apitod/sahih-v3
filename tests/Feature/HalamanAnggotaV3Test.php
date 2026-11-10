@@ -198,7 +198,7 @@ it('pohon admin menampilkan badge Beku pada downline yang dibekukan', function (
 /**
  * Aturan "tanpa rupiah" (PRD v3.0 §3.1, §10) berlaku untuk beranda dan halaman
  * tukar. Halaman saldo justru WAJIB menampilkan rupiah: anggota memutuskan
- * berapa yang ditarik (phase-6a §10, BUSINESS_RULES §13 item 5, min Rp 100.000).
+ * berapa yang ditarik (phase-6a §10, BUSINESS_RULES §13 item 5, min Rp 120.000).
  */
 it('halaman saldo dan tarik menampilkan nominal rupiah', function () {
     config(['sahih.pencairan_aktif' => true]); // modul ditahan secara default
@@ -216,5 +216,5 @@ it('halaman saldo dan tarik menampilkan nominal rupiah', function () {
     $this->actingAs($a, 'web')->get('/tarik')
         ->assertOk()
         ->assertSee('1.250.000')
-        ->assertSee('100.000');
+        ->assertSee('120.000');
 });

@@ -237,10 +237,10 @@ it('penolakan mengembalikan bonus ke available', function () {
     bonusUji($member, 150000);
 
     test()->actingAs($member, 'web')->post('/tarik', [
-        'amount' => 150000, 'bank_name' => 'BCA', 'account_number' => '1', 'account_holder' => 'A',
+        'amount' => 120000, 'bank_name' => 'BCA', 'account_number' => '1', 'account_holder' => 'A',
     ]);
     $w = Withdrawal::sole();
-    expect((int) $member->bonusEntries()->where('status', 'available')->sum('amount'))->toBe(0);
+    expect((int) $member->bonusEntries()->where('status', 'available')->sum('amount'))->toBe(30000);
 
     test()->actingAs(adminPencairan(), 'admin')->post("/admin/pencairan/{$w->id}/proses", [
         'status' => 'rejected', 'note' => 'salah rekening',
@@ -412,7 +412,7 @@ it('penarikan sebagian memecah bonus leadership tanpa bentrok kunci periode', fu
 
     test()->actingAs($anggota, 'web')
         ->post('/tarik', [
-            'amount' => 100000,
+            'amount' => 120000,
             'bank_name' => 'BRI',
             'account_number' => '1234567890',
             'account_holder' => 'Anggota Uji',
@@ -423,13 +423,13 @@ it('penarikan sebagian memecah bonus leadership tanpa bentrok kunci periode', fu
     $baris = $anggota->bonusEntries()->orderBy('id')->get();
 
     expect($baris)->toHaveCount(2)
-        ->and((int) $baris[0]->amount)->toBe(100000)
+        ->and((int) $baris[0]->amount)->toBe(120000)
         ->and($baris[0]->status)->toBe('withdrawn')
-        ->and((int) $baris[1]->amount)->toBe(1900000)
+        ->and((int) $baris[1]->amount)->toBe(1880000)
         ->and($baris[1]->status)->toBe('available')
         ->and($baris[1]->split_dari_id)->toBe($baris[0]->id)
         ->and((int) $anggota->bonusEntries()->sum('amount'))->toBe(2000000)
-        ->and((int) $anggota->bonusEntries()->bisaDitarik()->sum('amount'))->toBe(1900000);
+        ->and((int) $anggota->bonusEntries()->bisaDitarik()->sum('amount'))->toBe(1880000);
 });
 
 it('admin dapat tanda jumlah penarikan yang menunggu diproses', function () {
@@ -437,7 +437,7 @@ it('admin dapat tanda jumlah penarikan yang menunggu diproses', function () {
     bonusUji($anggota, 500000);
 
     test()->actingAs($anggota, 'web')->post('/tarik', [
-        'amount' => 100000,
+        'amount' => 120000,
         'bank_name' => 'BRI',
         'account_number' => '1234567890',
         'account_holder' => 'Anggota Uji',
