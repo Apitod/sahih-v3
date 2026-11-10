@@ -44,6 +44,7 @@ class ProsesBonusBulanan extends Command
         $nilai = (int) config('sahih.leadership_value_per_point', 40000);
 
         $totalPl = PointEntry::where('kind', 'pl')
+            ->where('source_type', '!=', 'withdrawal')
             ->whereBetween('created_at', [$awal, $akhir])
             ->groupBy('member_id')
             ->selectRaw('member_id, SUM(delta) as total')

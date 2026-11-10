@@ -49,6 +49,10 @@ class DiagnosaSahih extends Command
             $this->line("{$r->kind}: {$r->n} baris / {$r->p} poin");
         }
 
+        $plDicairkan = -(int) PointEntry::where('kind', 'pl')->where('source_type', 'withdrawal')->sum('delta');
+        $leadershipDicairkan = (int) BonusEntry::where('kind', 'leadership')->where('status', 'withdrawn')->sum('amount');
+        $this->line("pl dicairkan: {$plDicairkan} poin / Rp".number_format($leadershipDicairkan, 0, ',', '.'));
+
         $this->line('== BONUS ==');
         foreach (BonusEntry::select('kind', 'status', DB::raw('count(*) as n'), DB::raw('sum(amount) as total'))->groupBy('kind', 'status')->get() as $r) {
             $this->line("{$r->kind} {$r->status}: {$r->n} baris / Rp".number_format((float) $r->total, 0, ',', '.'));
