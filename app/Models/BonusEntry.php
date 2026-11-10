@@ -15,6 +15,7 @@ class BonusEntry extends Model
 
     public function member() { return $this->belongsTo(Member::class); }
     public function transaction() { return $this->belongsTo(Transaction::class, 'source_transaction_id'); }
+    public function withdrawal() { return $this->belongsTo(Withdrawal::class); }
 
     /**
      * Asal bonus, buat ditampilkan ke anggota (transparansi).

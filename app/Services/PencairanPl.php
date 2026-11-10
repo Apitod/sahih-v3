@@ -16,11 +16,23 @@ class PencairanPl
      */
     public function sinkron(Member $member, ?int $withdrawalId = null): int
     {
+        // Serialisasi per anggota: dua pencairan berbeda bisa dibayar hampir
+        // bersamaan. Tanpa lock, keduanya bisa membaca ledger yang sama dan
+        // menulis potongan dobel.
+        Member::whereKey($member->getKey())->lockForUpdate()->firstOrFail();
+
         $nilai = max(1, (int) config('sahih.leadership_value_per_point', 40000));
 
+        // Bonus leadership ditandai `withdrawn` saat anggota MENGAJUKAN penarikan,
+        // bukan saat admin membayarnya. Karena itu hanya hitung yang sudah `paid`;
+        // baris lama tanpa withdrawal_id tetap dihitung sebagai warisan.
         $dibayar = (int) BonusEntry::where('member_id', $member->id)
             ->where('kind', 'leadership')
             ->where('status', 'withdrawn')
+            ->where(function ($q) {
+                $q->whereHas('withdrawal', fn ($w) => $w->where('status', 'paid'))
+                    ->orWhereNull('withdrawal_id');
+            })
             ->sum('amount');
 
         $seharusnya = intdiv($dibayar, $nilai);
