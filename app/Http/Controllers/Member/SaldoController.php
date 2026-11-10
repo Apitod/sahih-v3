@@ -54,7 +54,7 @@ class SaldoController extends Controller
             'amount.multiple_of' => 'Jumlah penarikan harus kelipatan Rp ' . number_format($kelipatan, 0, ',', '.') . '.',
         ]);
 
-        DB::transaction(function () use ($request, $member, $min) {
+        DB::transaction(function () use ($request, $member) {
             // Kunci baris bonus yang akan dipakai. Saldo dibaca di sini, di dalam transaksi,
             // supaya dua permintaan bersamaan tidak sama-sama lolos validasi saldo lama.
             $entries = $member->bonusEntries()
