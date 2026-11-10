@@ -1,6 +1,6 @@
 @extends('layouts.dasar')
 
-@section('judul', 'Tukar PIN — Sahih Bodyfeed')
+@section('judul', 'PIN Transaksi — Sahih Bodyfeed')
 
 @section('sidebar')
     <x-nav-anggota />
@@ -8,7 +8,7 @@
 
 @section('topbar')
     <div>
-        <h1 class="text-xl font-bold text-slate-900">Tukar PIN</h1>
+        <h1 class="text-xl font-bold text-slate-900">PIN Transaksi</h1>
         <p class="text-sm text-slate-600">Repeat order dan naik peringkat</p>
     </div>
     <span class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold {{ $status['aktif'] ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">

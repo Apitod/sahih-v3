@@ -20,7 +20,7 @@
             <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
                 <li>Anggota membeli PIN dari Anda (pembayaran dilakukan di luar sistem).</li>
                 <li>Buat PIN di <strong>Kelola PIN → Buat PIN</strong>. Isi jenis, jumlah pin, harga, dan username pemegang bila ada.</li>
-                <li>Berikan kode PIN ke anggota. Anggota menukarnya sendiri di halaman <strong>Tukar PIN</strong>.</li>
+                <li>Berikan kode PIN ke anggota. Anggota menukarnya sendiri di halaman <strong>PIN Transaksi</strong>.</li>
                 <li>Poin, bonus sponsor, peringkat, dan hadiah dihitung otomatis saat PIN ditukar.</li>
                 <li>Proses klaim hadiah di <strong>Klaim Hadiah</strong>, lalu tandai <strong>Serahkan</strong> setelah barang diterima anggota.</li>
             </ol>
@@ -84,7 +84,7 @@
         <section class="rounded-lg border border-amber-200 bg-amber-50 p-6">
             <h2 class="text-lg font-bold text-amber-900">Yang Perlu Diperhatikan</h2>
             <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-amber-900">
-                <li>Nilai rupiah tidak tampil di Beranda dan halaman Tukar PIN. Halaman <strong>Saldo</strong> dan <strong>Tarik</strong> justru wajib menampilkan rupiah — anggota perlu tahu berapa yang bisa ditarik.</li>
+                <li>Nilai rupiah tidak tampil di Beranda dan halaman PIN Transaksi. Halaman <strong>Saldo</strong> dan <strong>Tarik</strong> justru wajib menampilkan rupiah — anggota perlu tahu berapa yang bisa ditarik.</li>
                 <li>Perubahan pengaturan hanya berlaku untuk transaksi berikutnya, bukan yang sudah tercatat.</li>
                 <li>Setiap perubahan penting tercatat di jejak audit.</li>
             </ul>
