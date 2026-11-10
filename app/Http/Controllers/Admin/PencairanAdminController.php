@@ -63,6 +63,11 @@ class PencairanAdminController extends Controller
                 'note' => $request->note,
             ]);
 
+            // Potong poin PL sejumlah dengan bonus leadership yang sudah dibayar.
+            if ($request->status === 'paid') {
+                app(\App\Services\PencairanPl::class)->sinkron($terkunci->member, $terkunci->id);
+            }
+
             // Restore bonus entries if rejected
             if ($request->status === 'rejected') {
                 BonusEntry::where('withdrawal_id', $terkunci->id)
