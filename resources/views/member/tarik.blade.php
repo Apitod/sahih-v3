@@ -35,10 +35,10 @@
 
             <div>
                 <label for="amount" class="block text-sm font-medium text-slate-700">Jumlah Penarikan</label>
-                <input type="number" name="amount" id="amount" required min="100000" max="{{ $saldoAvailable }}"
+                <input type="number" name="amount" id="amount" required min="{{ config('sahih.withdraw_min') }}" max="{{ $saldoAvailable }}" step="{{ config('sahih.withdraw_multiple_of') }}"
                        value="{{ old('amount') }}"
                        class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20">
-                <p class="mt-1 text-xs text-slate-500">Minimum penarikan Rp 100.000</p>
+                <p class="mt-1 text-xs text-slate-500">Minimum Rp {{ number_format(config('sahih.withdraw_min'), 0, ',', '.') }} dan harus kelipatan Rp {{ number_format(config('sahih.withdraw_multiple_of'), 0, ',', '.') }}</p>
             </div>
 
             <div>

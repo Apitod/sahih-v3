@@ -35,20 +35,23 @@ class SaldoController extends Controller
     {
         $member = auth('web')->user();
         $saldoAvailable = (int) $member->bonusEntries()->bisaDitarik()->sum('amount');
-        $min = (int) config('sahih.withdraw_min', 100000);
+        $min = (int) config('sahih.withdraw_min', 120000);
+        $kelipatan = (int) config('sahih.withdraw_multiple_of', 40000);
 
         $request->validate([
             'amount' => [
                 'required', 'integer',
                 "min:{$min}",
                 "max:{$saldoAvailable}",
+                "multiple_of:{$kelipatan}",
             ],
             'bank_name' => 'required|string|max:50',
             'account_number' => 'required|string|max:40',
             'account_holder' => 'required|string|max:100',
         ], [
-            'amount.min' => "Minimum penarikan Rp " . number_format($min, 0, ',', '.') . ".",
-            'amount.max' => "Jumlah melebihi saldo available.",
+            'amount.min' => 'Minimum penarikan Rp ' . number_format($min, 0, ',', '.') . '.',
+            'amount.max' => 'Jumlah melebihi saldo available.',
+            'amount.multiple_of' => 'Jumlah penarikan harus kelipatan Rp ' . number_format($kelipatan, 0, ',', '.') . '.',
         ]);
 
         DB::transaction(function () use ($request, $member, $min) {
