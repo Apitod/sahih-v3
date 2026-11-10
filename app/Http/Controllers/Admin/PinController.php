@@ -33,6 +33,9 @@ class PinController extends Controller
     /** Peringkat yang sah sebagai tujuan naik peringkat. Manager tidak dijual (#58). */
     private const PERINGKAT_TUJUAN = ['reseller', 'agent', 'distributor', 'manager'];
 
+    /** Peringkat yang boleh dipilih untuk PIN gratis (Owner 9 Nov). */
+    private const PERINGKAT_GRATIS = ['reseller', 'agent', 'distributor'];
+
     public function index(Request $request): View
     {
         $filter = $request->only(['status', 'type']);
@@ -61,6 +64,7 @@ class PinController extends Controller
         $harga = app(PengaturanHarga::class);
 
         return view('admin.pin.create', [
+            // Reseller disertakan karena PIN gratis boleh menarget Reseller.
             'peringkat' => ['reseller' => 'Reseller', 'agent' => 'Agent', 'distributor' => 'Distributor'],
             // Harga per pin dari pengaturan, supaya Owner bisa mengubah tanpa sentuh kode.
             'hargaRegistrasi' => $harga->ambil('harga_pin_registrasi'),
@@ -72,11 +76,13 @@ class PinController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', 'in:'.implode(',', Pin::JENIS)],
-            'points' => ['required', 'integer', 'min:0', 'max:1000'],
+            // PIN gratis tidak butuh isian poin/harga: server memaksa 0.
+            'points' => ['required_unless:is_free,1', 'nullable', 'integer', 'min:0', 'max:1000'],
             // Harga tetap diterima supaya PIN lama/klien lama tidak pecah, tapi
             // nilainya WAJIB sama dengan hitungan sistem di bawah.
-            'price' => ['required', 'integer', 'min:0', 'max:1000000000'],
+            'price' => ['required_unless:is_free,1', 'nullable', 'integer', 'min:0', 'max:1000000000'],
             'target_rank' => ['nullable', 'in:'.implode(',', self::PERINGKAT_TUJUAN)],
+            'is_free' => ['nullable', 'boolean'],
             'quantity' => ['required', 'integer', 'min:1', 'max:50'],
 
             // Verifikasi username dua kali (permintaan Owner). `username_confirmation`
@@ -129,7 +135,39 @@ class PinController extends Controller
             }
         }
 
-        // ---------------------------------------------------------------- 3. jalur: daftar atau naik?
+        // ---------------------------------------------------------------- 3. PIN gratis
+        $isFree = ! empty($data['is_free']);
+
+        if ($isFree) {
+            if ($data['type'] !== Pin::JENIS_REGISTRASI_UPGRADE) {
+                return back()->withInput()->withErrors([
+                    'type' => 'PIN gratis hanya untuk jalur registrasi/upgrade.',
+                ]);
+            }
+
+            $target = ($data['target_rank'] ?? null) ?: null;
+
+            if ($target === null || ! in_array($target, self::PERINGKAT_GRATIS, true)) {
+                return back()->withInput()->withErrors([
+                    'target_rank' => 'PIN gratis wajib memilih peringkat target: Reseller, Agent, atau Distributor.',
+                ]);
+            }
+
+            // PIN gratis selalu tanpa pemegang: dipakai orang baru saat /daftar.
+            // Kalau dititipkan (assigned_member_id terisi), TransactionPoster menolak
+            // karena buyer baru ≠ pemegang lama — PIN jadi bata.
+            if ($username !== '') {
+                return back()->withInput()->withErrors([
+                    'username' => 'PIN gratis tidak boleh menyebut username — dipakai anggota baru saat pendaftaran.',
+                ]);
+            }
+
+            // PIN gratis: poin dan harga dipaksa nol, tidak ada perbandingan harga.
+            $data['points'] = 0;
+            $data['price'] = 0;
+        }
+
+        // ---------------------------------------------------------------- 4. jalur: daftar atau naik?
         $target = ($data['target_rank'] ?? null) ?: null;
 
         // Manager tidak dijual lewat PIN (#58).
@@ -140,7 +178,8 @@ class PinController extends Controller
         }
 
         // Reseller adalah peringkat awal; tidak ada anggota yang bisa naik ke situ (#55).
-        if ($target === 'reseller') {
+        // PIN gratis boleh menarget Reseller karena dipakai untuk pendaftaran.
+        if ($target === 'reseller' && ! $isFree) {
             return back()->withInput()->withErrors([
                 'target_rank' => 'PIN naik peringkat tidak bisa ke Reseller — Reseller adalah peringkat awal.',
             ]);
@@ -150,7 +189,7 @@ class PinController extends Controller
         // itu butuh pemegang yang SUDAH terdaftar: peringkat tujuan harus di atas
         // peringkat sekarang. Kalau username diketik tapi tidak ada di database,
         // admin salah ketik — ditolak, jangan sampai PIN terbit tanpa pemilik.
-        if ($target !== null && $member === null) {
+        if ($target !== null && $member === null && ! $isFree) {
             $pesan = $username === ''
                 ? 'PIN naik peringkat harus menyebut pemegangnya, supaya peringkat tujuannya bisa diperiksa.'
                 : "Username \"{$username}\" belum terdaftar. Untuk naik peringkat, anggotanya harus sudah punya akun. Periksa lagi ejaannya.";
@@ -164,7 +203,7 @@ class PinController extends Controller
         // akunnya bermasalah. Yang penting PIN-nya tidak bisa dipakai di /tukar
         // (ditolak di PinRedemptionController), jadi tidak menimbulkan jalur ganda.
 
-        if ($target !== null && $member !== null) {
+        if ($target !== null && $member !== null && ! $isFree) {
             $ranks = app(RankResolver::class);
 
             if ($ranks->weight($target) <= $ranks->weight($member->rank)) {
@@ -174,58 +213,60 @@ class PinController extends Controller
             }
         }
 
-        // ---------------------------------------------------------------- 4. harga dari sistem
+        // ---------------------------------------------------------------- 5. harga dari sistem
         $harga = app(PengaturanHarga::class);
         $points = (int) $data['points'];
 
-        if ($data['type'] === Pin::JENIS_RO) {
-            $expectedPrice = $points * $harga->ambil('harga_pin_ro');
+        if (! $isFree) {
+            if ($data['type'] === Pin::JENIS_RO) {
+                $expectedPrice = $points * $harga->ambil('harga_pin_ro');
 
-            if ((int) $data['price'] !== $expectedPrice) {
-                return back()->withInput()->withErrors([
-                    'price' => "PIN RO {$points} poin harus Rp ".number_format($expectedPrice, 0, ',', '.').'.',
-                ]);
-            }
-        } else {
-            // PIN gabungan. Dua jalur dengan aturan jumlah pin berbeda:
-            //
-            //  - Pendaftaran (tanpa peringkat tujuan): jumlah pin HARUS salah satu
-            //    paket 1/3/6, karena peringkat anggota baru ditentukan dari situ.
-            //  - Naik peringkat (dengan peringkat tujuan): jumlah pin bebas, karena
-            //    peringkatnya sudah ditunjuk admin. Yang penting harganya = pin × harga.
-            //    Contoh: Reseller -> Distributor butuh 5 pin (6 - 1).
-            $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
+                if ((int) $data['price'] !== $expectedPrice) {
+                    return back()->withInput()->withErrors([
+                        'price' => "PIN RO {$points} poin harus Rp ".number_format($expectedPrice, 0, ',', '.').'.',
+                    ]);
+                }
+            } else {
+                // PIN gabungan. Dua jalur dengan aturan jumlah pin berbeda:
+                //
+                //  - Pendaftaran (tanpa peringkat tujuan): jumlah pin HARUS salah satu
+                //    paket 1/3/6, karena peringkat anggota baru ditentukan dari situ.
+                //  - Naik peringkat (dengan peringkat tujuan): jumlah pin bebas, karena
+                //    peringkatnya sudah ditunjuk admin. Yang penting harganya = pin × harga.
+                //    Contoh: Reseller -> Distributor butuh 5 pin (6 - 1).
+                $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
 
-            if ($target === null && ! in_array($points, $paket, true)) {
-                return back()->withInput()->withErrors([
-                    'points' => 'Untuk PIN pendaftaran, jumlah pin harus salah satu paket: '.implode(', ', $paket).'.',
-                ]);
-            }
+                if ($target === null && ! in_array($points, $paket, true)) {
+                    return back()->withInput()->withErrors([
+                        'points' => 'Untuk PIN pendaftaran, jumlah pin harus salah satu paket: '.implode(', ', $paket).'.',
+                    ]);
+                }
 
-            // PIN naik peringkat harus berisi minimal 1 pin. PIN 0 pin hanya bisa
-            // lahir lewat data lama yang salah; panel tidak boleh menerbitkannya
-            // lagi, karena pasti ditolak saat dipakai (ada uji penjaganya).
-            if ($target !== null && $points < 1) {
-                return back()->withInput()->withErrors([
-                    'points' => 'PIN naik peringkat harus berisi minimal 1 pin.',
-                ]);
-            }
+                // PIN naik peringkat harus berisi minimal 1 pin. PIN 0 pin hanya bisa
+                // lahir lewat data lama yang salah; panel tidak boleh menerbitkannya
+                // lagi, karena pasti ditolak saat dipakai (ada uji penjaganya).
+                if ($target !== null && $points < 1) {
+                    return back()->withInput()->withErrors([
+                        'points' => 'PIN naik peringkat harus berisi minimal 1 pin.',
+                    ]);
+                }
 
-            $expectedPrice = $points * $harga->ambil('harga_pin_registrasi');
+                $expectedPrice = $points * $harga->ambil('harga_pin_registrasi');
 
-            if ((int) $data['price'] !== $expectedPrice) {
-                return back()->withInput()->withErrors([
-                    'price' => "PIN {$points} pin harus Rp ".number_format($expectedPrice, 0, ',', '.')
-                        .' ('.$points.' × Rp '.number_format($harga->ambil('harga_pin_registrasi'), 0, ',', '.').').',
-                ]);
+                if ((int) $data['price'] !== $expectedPrice) {
+                    return back()->withInput()->withErrors([
+                        'price' => "PIN {$points} pin harus Rp ".number_format($expectedPrice, 0, ',', '.')
+                            .' ('.$points.' × Rp '.number_format($harga->ambil('harga_pin_registrasi'), 0, ',', '.').').',
+                    ]);
+                }
             }
         }
 
-        // ---------------------------------------------------------------- 5. simpan
+        // ---------------------------------------------------------------- 6. simpan
         $admin = Auth::guard('admin')->user();
         $dibuat = [];
 
-        DB::transaction(function () use ($data, $member, $target, $username, $admin, &$dibuat) {
+        DB::transaction(function () use ($data, $member, $target, $isFree, $username, $admin, &$dibuat) {
             for ($i = 0; $i < (int) $data['quantity']; $i++) {
                 $pin = Pin::create([
                     'code' => $this->kodeUnik(),
@@ -233,6 +274,7 @@ class PinController extends Controller
                     'target_rank' => $target,
                     'points' => (int) $data['points'],
                     'price' => (int) $data['price'],
+                    'is_free' => $isFree,
                     'status' => 'issued',
                     'issued_by' => $admin->id,
                     'assigned_member_id' => $member?->id,
@@ -244,7 +286,7 @@ class PinController extends Controller
                     'action' => 'pin.create',
                     'subject_type' => Pin::class,
                     'subject_id' => $pin->id,
-                    'after' => $pin->only(['code', 'type', 'target_rank', 'points', 'price', 'assigned_member_id'])
+                    'after' => $pin->only(['code', 'type', 'target_rank', 'points', 'price', 'is_free', 'assigned_member_id'])
                         + ['username_diketik' => $username],
                     'ip' => request()->ip(),
                 ]);

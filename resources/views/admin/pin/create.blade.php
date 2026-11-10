@@ -48,6 +48,18 @@
             @error('type') <span id="type-error" class="mt-1 block text-xs text-bahaya">{{ $message }}</span> @enderror
         </label>
 
+        {{-- PIN gratis: hanya admin yang boleh terbitkan (Owner 9 Nov). --}}
+        <label class="flex cursor-pointer items-center gap-3 rounded-kartu border border-garis bg-krem/60 p-4">
+            <input type="checkbox" name="is_free" value="1" @checked(old('is_free'))
+                   class="h-5 w-5 rounded border-garis text-hijau focus:ring-hijau/20"
+                   @error('is_free') aria-invalid="true" aria-describedby="is_free-error" @enderror>
+            <div>
+                <span class="text-sm font-semibold">PIN Gratis</span>
+                <p class="text-xs text-tinta/60">0 poin, Rp 0, untuk pendaftaran anggota baru dengan peringkat target tertentu.</p>
+            </div>
+            @error('is_free') <span id="is_free-error" class="ml-auto text-xs text-bahaya">{{ $message }}</span> @enderror
+        </label>
+
         {{-- Verifikasi username dua kali (permintaan Owner): PIN salah pemegang = salah harga. --}}
         <div class="rounded-kartu border border-garis bg-krem/60 p-4">
             <p class="text-sm text-tinta/70">
@@ -77,24 +89,25 @@
 
             <p class="mt-2 text-xs text-tinta/60">
                 Kosongkan keduanya kalau PIN ini dijual bebas (tanpa pemegang), misalnya PIN RO.
+                PIN Gratis wajib kosong — dipakai anggota baru saat pendaftaran.
             </p>
         </div>
 
         <label class="block">
             <span class="text-sm font-medium">
                 Peringkat tujuan
-                <span class="text-tinta/50">(kosongkan untuk mendaftarkan anggota baru)</span>
+                <span class="text-tinta/50">(kosongkan untuk pendaftaran berbayar; wajib diisi untuk PIN gratis)</span>
             </span>
             <select name="target_rank"
                     class="mt-1 w-full rounded-lg border border-garis bg-krem px-3 py-2.5 outline-none transition focus:border-hijau focus:ring-2 focus:ring-hijau/20"
                     @error('target_rank') aria-invalid="true" aria-describedby="target_rank-error" @enderror>
-                <option value="">— tidak perlu / pendaftaran —</option>
+                <option value="">— tidak perlu / pendaftaran berbayar —</option>
                 @foreach ($peringkat as $nilai => $label)
                     <option value="{{ $nilai }}" @selected(old('target_rank') === $nilai)>{{ $label }}</option>
                 @endforeach
             </select>
             <span class="mt-1 block text-xs text-tinta/60">
-                Manager tidak dijual lewat PIN — otomatis setelah Distributor + 20 poin PA.
+                PIN gratis menentukan peringkat anggota baru. Manager tidak dijual lewat PIN — otomatis setelah Distributor + 20 poin PA.
             </span>
             @error('target_rank') <span id="target_rank-error" class="mt-1 block text-xs text-bahaya">{{ $message }}</span> @enderror
         </label>

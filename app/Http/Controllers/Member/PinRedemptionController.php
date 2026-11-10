@@ -31,6 +31,7 @@ class PinRedemptionController extends Controller
             // dipakai admin saat mendaftarkan anggota baru, jadi tidak ditampilkan.
             'pinSaya' => Pin::where('assigned_member_id', $member->id)
                 ->where('status', 'issued')
+                ->where('is_free', false)
                 ->where(function ($q) {
                     $q->where('type', Pin::JENIS_RO)
                         ->orWhere(fn ($q2) => $q2->where('type', Pin::JENIS_REGISTRASI_UPGRADE)
@@ -48,6 +49,7 @@ class PinRedemptionController extends Controller
                 'peringkat' => $member->rank,
                 'jumlah_pin' => Pin::where('assigned_member_id', $member->id)
                     ->where('status', 'issued')
+                    ->where('is_free', false)
                     ->where(function ($q) {
                         $q->where('type', Pin::JENIS_RO)
                             ->orWhere(fn ($q2) => $q2->where('type', Pin::JENIS_REGISTRASI_UPGRADE)

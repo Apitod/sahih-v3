@@ -75,6 +75,23 @@ class TransactionPoster
                 throw new \RuntimeException("PIN {$pin->code} tidak bisa dipakai untuk transaksi {$type}.");
             }
 
+            // Penjaga PIN gratis: hanya sah untuk join, target harus peringkat
+            // yang boleh didaftarkan, dan poin/harga wajib nol. Row yang diubah
+            // langsung di database tidak boleh lolos jadi poin/bonus gratis.
+            if ($pin->is_free) {
+                if ($type !== 'join') {
+                    throw new \RuntimeException("PIN gratis {$pin->code} hanya untuk pendaftaran.");
+                }
+
+                if (! in_array($pin->target_rank, ['reseller', 'agent', 'distributor'], true)) {
+                    throw new \RuntimeException("PIN gratis {$pin->code} tidak punya peringkat target yang sah.");
+                }
+
+                if ((int) $pin->points !== 0 || (int) $pin->price !== 0) {
+                    throw new \RuntimeException("PIN gratis {$pin->code} harus 0 poin dan Rp 0.");
+                }
+            }
+
             // Penjaga harga RO (DECISIONS #56): harga per pin, diperiksa lagi saat
             // PIN dipakai. PIN yang terbit sebelum aturan ini, atau baris yang diubah
             // langsung di database, tidak boleh lolos dengan nominal lama.
@@ -88,7 +105,8 @@ class TransactionPoster
             }
 
             // Penjaga PIN registrasi: poin harus salah satu paket §2, harga per pin × jumlah pin.
-            if ($type === 'join') {
+            // PIN gratis (0 poin, Rp 0) lewat jalur ini karena peringkatnya sudah ditentukan admin.
+            if ($type === 'join' && ! $pin->is_free) {
                 $paket = array_map('intval', array_keys((array) config('sahih.rank_by_points')));
 
                 if (! in_array((int) $pin->points, $paket, true)) {
@@ -160,8 +178,13 @@ class TransactionPoster
             ]);
 
             // Peringkat pembeli: saat mendaftar dari poin, saat upgrade dari target PIN.
+            // PIN gratis menentukan peringkat langsung dari target_rank.
             if ($type === 'join') {
-                $this->applyRank($buyer, $this->ranks->forPoints($pin->points), $trx);
+                $rankBaru = $pin->is_free
+                    ? $pin->target_rank
+                    : $this->ranks->forPoints($pin->points);
+
+                $this->applyRank($buyer, $rankBaru, $trx);
             }
 
             if ($type === 'upgrade') {
@@ -198,10 +221,11 @@ class TransactionPoster
                 $this->promoteIfQualified($sponsor->fresh(), $trx);
             }
 
-            // Bonus sponsor sepanjang rantai upline — hanya join & upgrade.
+            // Bonus sponsor sepanjang rantai upline — hanya join & upgrade dengan amount > 0.
             // RO tidak membayar bonus sponsor (BUSINESS_RULES.md §6).
+            // PIN gratis (Rp 0) melewati bonus sponsor karena tidak ada uang yang dibagi.
             $total = 0;
-            if ($type !== 'ro') {
+            if ($type !== 'ro' && (int) $pin->price > 0) {
                 $allocations = $this->commission->distribute((int) $pin->price, $buyer->uplineRanks());
                 $cursor = $buyer->sponsor;
 
@@ -333,6 +357,10 @@ class TransactionPoster
 
     private function addPoints(Member $member, array $kinds, int $points, Transaction $trx): void
     {
+        if ($points === 0) {
+            return;
+        }
+
         foreach ($kinds as $kind) {
             PointEntry::create([
                 'member_id' => $member->id,

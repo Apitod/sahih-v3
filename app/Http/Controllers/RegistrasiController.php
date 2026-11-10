@@ -59,6 +59,10 @@ class RegistrasiController extends Controller
             return back()->withInput()->withErrors(['code' => 'Kode PIN tidak dikenal atau sudah dipakai. Hubungi admin.']);
         }
 
+        if ($pin->is_free && ! in_array($pin->target_rank, ['reseller', 'agent', 'distributor'], true)) {
+            return back()->withInput()->withErrors(['code' => 'PIN gratis tidak memiliki peringkat target yang sah. Hubungi admin.']);
+        }
+
         if (Member::where('username', $data['username'])->exists()) {
             return back()->withInput()->withErrors(['username' => 'Username sudah dipakai. Pilih yang lain.']);
         }
@@ -71,10 +75,23 @@ class RegistrasiController extends Controller
             if ($sponsor === null) {
                 return back()->withInput()->withErrors(['referral' => 'Kode referral tidak ditemukan. Periksa lagi.']);
             }
+
+            if ($sponsor->status !== 'active') {
+                return back()->withInput()->withErrors(['referral' => 'Kode referral sudah tidak aktif.']);
+            }
+
+            // Semua pendaftaran: sponsor yang dipilih harus sudah punya poin PA.
+            // Ini mencegah rantai abu-abu dari akun yang belum berkontribusi
+            // (Owner 9 Nov).
+            if ($sponsor->pointTotal('pa') <= 0) {
+                return back()->withInput()->withErrors(['referral' => 'Sponsor yang dipilih belum memiliki poin PA. Pilih sponsor lain.']);
+            }
         }
 
         try {
             $anggota = DB::transaction(function () use ($data, $pin, $sponsor) {
+                // PIN gratis tidak menyimpan sponsor_id — hanya diverifikasi PA-nya
+                // supaya tidak terjadi akun siluman masuk jaringan.
                 $baru = Member::create([
                     'username'  => $data['username'],
                     'name'      => $data['name'],
@@ -82,7 +99,9 @@ class RegistrasiController extends Controller
                     'address'   => $data['address'] ?? null,
                     'nik_ktp'   => $data['nik_ktp'],
                     'password'  => $data['password'],
-                    'sponsor_id' => $sponsor?->id,
+                    'sponsor_id' => $pin->is_free ? null : $sponsor?->id,
+                    // Selalu mulai Reseller; TransactionPoster yang menaikkan ke
+                    // target_rank (PIN gratis) supaya RankHistory tetap tercatat.
                     'rank'      => 'reseller',
                     'status'    => 'active',
                     'joined_at' => now(),

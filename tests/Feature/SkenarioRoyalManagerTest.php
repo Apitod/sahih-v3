@@ -9,6 +9,9 @@ use Database\Seeders\SkenarioRoyalManagerSeeder;
  * RM-nya baru Motor, dan RM hanya sebutan untuk Manager yang punya Manager langsung.
  */
 beforeEach(function () {
+    // Modul pencairan diuji lewat route yang digerbangkan config ini.
+    config(['sahih.pencairan_aktif' => true]);
+
     foreach ([['Produk', 5], ['Voucher', 20], ['Handphone', 75], ['Motor', 500], ['Mobil', 3500]] as [$nama, $ambang]) {
         MilestoneReward::create(['name' => $nama, 'threshold' => $ambang, 'is_active' => true, 'sort' => $ambang]);
     }

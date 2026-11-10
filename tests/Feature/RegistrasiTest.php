@@ -16,7 +16,7 @@ use App\Models\BonusEntry;
  * Aturan yang dikunci:
  *  - Referral diisi tapi tidak ditemukan -> ditolak, tidak ada akun tercipta.
  *  - Referral kosong -> tanpa upline, bonus sponsor Rp 0, poin PA/PR tetap.
- *  - Referral valid -> akun masuk jaringannya, bonus sponsor terposting.
+ *  - Referral valid DAN sudah punya poin PA -> akun masuk jaringannya, bonus sponsor terposting.
  *  - PIN tidak valid / sudah terpakai -> ditolak, tidak ada akun tercipta.
  *  - Username kembar -> ditolak.
  *  - NIK KTP wajib 16 digit dan unik -> simpangan ditolak, tidak ada akun.
@@ -75,6 +75,7 @@ it('pendaftaran berhasil dengan PIN valid tanpa referral — tanpa upline, bonus
 
 it('pendaftaran dengan referral valid masuk jaringan dan posting bonus sponsor', function () {
     $sponsor = member('distributor');
+    givePoints($sponsor, 'pa', 1); // sponsor harus punya PA sebelum bisa dipilih
     $pin = pinDaftarPaket(1);
 
     daftar(['code' => $pin->code, 'referral' => $sponsor->username])
@@ -82,13 +83,25 @@ it('pendaftaran dengan referral valid masuk jaringan dan posting bonus sponsor',
 
     $baru = Member::orderByDesc('id')->first();
     expect($baru->sponsor_id)->toBe($sponsor->id)
-        // Sponsor dapat PA + PR dari join baru (paket 1 pin).
-        ->and((int) PointEntry::where('member_id', $sponsor->id)->where('kind', 'pa')->sum('delta'))->toBe(1)
+        // Sponsor dapat PA + PR dari join baru (paket 1 pin) di atas PA yang sudah ada.
+        ->and((int) PointEntry::where('member_id', $sponsor->id)->where('kind', 'pa')->sum('delta'))->toBe(2)
         ->and((int) PointEntry::where('member_id', $sponsor->id)->where('kind', 'pr')->sum('delta'))->toBe(1)
-        ->and($sponsor->fresh()->point_pa)->toBe(1);
+        ->and($sponsor->fresh()->point_pa)->toBe(2);
 
     $trx = Transaction::where('member_id', $baru->id)->where('type', 'join')->first();
     expect((int) BonusEntry::where('source_transaction_id', $trx->id)->sum('amount'))->toBeGreaterThan(0);
+});
+
+it('referral yang belum punya poin PA -> ditolak, tidak ada akun tercipta', function () {
+    $sponsor = member('distributor');
+    $pin = pinDaftarPaket(1);
+
+    daftar(['code' => $pin->code, 'referral' => $sponsor->username])
+        ->assertSessionHasErrors('referral');
+
+    expect(Member::count())->toBe(1)   // cuma sponsor
+        ->and(Transaction::count())->toBe(0)
+        ->and($pin->fresh()->status)->toBe('issued');
 });
 
 it('referral diisi tapi tidak ditemukan -> ditolak, tidak ada akun tercipta', function () {

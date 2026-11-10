@@ -28,10 +28,10 @@ class Pin extends Model
     public const JENIS = [self::JENIS_REGISTRASI_UPGRADE, self::JENIS_RO];
 
 
-    protected $fillable = ['code', 'type', 'target_rank', 'points', 'price', 'status', 'issued_by',
-        'assigned_member_id', 'used_by_member_id', 'used_at'];
+    protected $fillable = ['code', 'type', 'target_rank', 'points', 'price', 'is_free', 'status',
+        'issued_by', 'assigned_member_id', 'used_by_member_id', 'used_at'];
 
-    protected $casts = ['used_at' => 'datetime', 'points' => 'integer', 'price' => 'integer'];
+    protected $casts = ['used_at' => 'datetime', 'points' => 'integer', 'price' => 'integer', 'is_free' => 'boolean'];
 
     /** Daftar jenis PIN yang sah — dua, bukan tiga. */
     public static function jenis(): array
@@ -61,16 +61,18 @@ class Pin extends Model
         return $this->jenisPin() === self::JENIS_RO;
     }
 
-    /** PIN gabungan tanpa peringkat tujuan = dipakai untuk mendaftarkan anggota baru. */
+    /** PIN gabungan tanpa peringkat tujuan = dipakai untuk mendaftarkan anggota baru.
+     *  PIN gratis selalu dipakai untuk pendaftaran meski punya target_rank. */
     public function untukPendaftaran(): bool
     {
-        return $this->isRegistrasiUpgrade() && $this->target_rank === null;
+        return $this->isRegistrasiUpgrade() && ($this->target_rank === null || $this->is_free);
     }
 
-    /** PIN gabungan dengan peringkat tujuan = dipakai untuk menaikkan peringkat. */
+    /** PIN gabungan dengan peringkat tujuan = dipakai untuk menaikkan peringkat.
+     *  PIN gratis bukan jalur upgrade. */
     public function untukUpgrade(): bool
     {
-        return $this->isRegistrasiUpgrade() && $this->target_rank !== null;
+        return $this->isRegistrasiUpgrade() && $this->target_rank !== null && ! $this->is_free;
     }
 
     /**
