@@ -60,7 +60,7 @@
             // Kelas ditulis utuh: Tailwind tidak bisa membaca nama kelas yang dirakit dari variabel.
             $stats = [
                 ['label' => 'Poin Afiliasi', 'value' => $poin['pa'], 'desc' => 'Dari jaringan', 'bg' => 'bg-blue-100', 'fg' => 'text-blue-600'],
-                ['label' => 'Poin Reward', 'value' => $poin['pr'], 'desc' => 'Dari belanja ulang', 'bg' => 'bg-emerald-100', 'fg' => 'text-emerald-600'],
+                ['label' => 'Poin Reward', 'value' => $poin['pr'], 'desc' => 'Dari belanja ulang · Putaran '.(intdiv($pr_total, $pr_cycle) + 1), 'bg' => 'bg-emerald-100', 'fg' => 'text-emerald-600'],
                 ['label' => 'Poin Leadership', 'value' => $poin['pl'], 'desc' => 'Dari kepemimpinan', 'bg' => 'bg-amber-100', 'fg' => 'text-amber-600'],
                 ['label' => 'Hadiah Menunggu', 'value' => $status['menunggu_klaim'], 'desc' => 'Perlu diambil', 'bg' => 'bg-purple-100', 'fg' => 'text-purple-600'],
             ];

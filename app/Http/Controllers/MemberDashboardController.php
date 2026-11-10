@@ -18,9 +18,13 @@ class MemberDashboardController extends Controller
     {
         $member = $request->user('web');
 
+        $putaranPr = max(1, (int) config('sahih.milestone_cycle_points', 3500));
+        $paCap = (int) config('sahih.pa_display_cap', 20);
+        $prTotal = $member->pointTotal('pr');
+
         $poin = [
-            'pa' => $member->pointTotal('pa'),
-            'pr' => $member->pointTotal('pr'),
+            'pa' => min($member->pointTotal('pa'), $paCap),
+            'pr' => $prTotal % $putaranPr,
             'pl' => $member->pointTotal('pl'),
         ];
 
@@ -59,6 +63,8 @@ class MemberDashboardController extends Controller
             'pohon' => $this->pohonJaringan($member),
             'sponsor' => $member->sponsor,
             'status' => $this->statusRingkas($member, $totalPoin),
+            'pr_total' => $prTotal,
+            'pr_cycle' => $putaranPr,
         ]);
     }
 
