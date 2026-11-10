@@ -20,15 +20,18 @@ class MemberDashboardController extends Controller
 
         $putaranPr = max(1, (int) config('sahih.milestone_cycle_points', 3500));
         $paCap = (int) config('sahih.pa_display_cap', 20);
+        $paTotal = $member->pointTotal('pa');
         $prTotal = $member->pointTotal('pr');
+        $plTotal = $member->pointTotal('pl');
 
         $poin = [
-            'pa' => min($member->pointTotal('pa'), $paCap),
+            'pa' => min($paTotal, $paCap),
             'pr' => $prTotal % $putaranPr,
-            'pl' => $member->pointTotal('pl'),
+            'pl' => $plTotal,
         ];
 
-        $totalPoin = array_sum($poin);
+        // Milestone memakai total asli, bukan angka kartu yang sudah dibatasi.
+        $totalPoin = $paTotal + $prTotal + $plTotal;
 
         // Halaman riwayat & hadiah memakai nama parameter berbeda supaya
         // membalik halaman riwayat tidak ikut menggeser halaman hadiah.
