@@ -41,8 +41,17 @@ return [
     // Syarat jadi Manager: sudah Distributor + 20 poin PA.
     'manager_min_pa' => 20,
 
-    // Minimum penarikan.
-    'withdraw_min' => 100000,
+    // Batas tampilan poin afiliasi di halaman anggota (Owner 10 Nov 2026).
+    // Angka asli tetap dipakai syarat peringkat & Manager.
+    'pa_display_cap' => 20,
+
+    // Minimum penarikan. Dinaikkan dari 100.000 ke 120.000 karena penarikan wajib
+    // kelipatan Rp40.000 (1 poin PL) — 100.000 bukan kelipatan (Owner 10 Nov 2026).
+    'withdraw_min' => 120000,
+
+    // Penarikan wajib bulat kelipatan nilai 1 poin PL supaya konversi poin tidak
+    // menyisakan pecahan.
+    'withdraw_multiple_of' => 40000,
 
     // Harga PIN repeat order (RO) per pin. Bisa diubah Owner (DECISIONS #56).
     'ro_price_per_point' => 500000,
