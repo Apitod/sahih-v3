@@ -42,6 +42,17 @@ class Member extends Authenticatable
         return (int) $this->pointEntries()->where('kind', $kind)->sum('delta');
     }
 
+    /**
+     * Akun yang lahir dari PIN registrasi gratis. Akun ini mulai tanpa PA,
+     * jadi dikecualikan dari syarat sponsor ber-PA (Owner 10 Nov 2026).
+     */
+    public function berasalDariPinGratis(): bool
+    {
+        return Pin::where('used_by_member_id', $this->id)
+            ->where('is_free', true)
+            ->exists();
+    }
+
     /** Rantai upline dari sponsor langsung ke atas, berhenti kalau putus. */
     public function uplineRanks(int $max = 0): array
     {

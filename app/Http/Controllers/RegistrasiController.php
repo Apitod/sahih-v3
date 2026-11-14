@@ -80,10 +80,10 @@ class RegistrasiController extends Controller
                 return back()->withInput()->withErrors(['referral' => 'Kode referral sudah tidak aktif.']);
             }
 
-            // Semua pendaftaran: sponsor yang dipilih harus sudah punya poin PA.
-            // Ini mencegah rantai abu-abu dari akun yang belum berkontribusi
-            // (Owner 9 Nov).
-            if ($sponsor->pointTotal('pa') <= 0) {
+            // Sponsor harus sudah punya poin PA, KECUALI akun yang lahir dari
+            // PIN gratis: mereka mulai 0 PA dan butuh downline untuk mendapat PA
+            // (Owner 10 Nov). Akun berbayar tetap wajib punya PA.
+            if (! $sponsor->berasalDariPinGratis() && $sponsor->pointTotal('pa') <= 0) {
                 return back()->withInput()->withErrors(['referral' => 'Sponsor yang dipilih belum memiliki poin PA. Pilih sponsor lain.']);
             }
         }
