@@ -17,6 +17,7 @@ use App\Models\BonusEntry;
  *  - Referral diisi tapi tidak ditemukan -> ditolak, tidak ada akun tercipta.
  *  - Referral kosong -> tanpa upline, bonus sponsor Rp 0, poin PA/PR tetap.
  *  - Referral valid DAN sudah punya poin PA -> akun masuk jaringannya, bonus sponsor terposting.
+ *  - Akun PIN gratis boleh jadi sponsor walau PA masih 0 (Owner 10 Nov).
  *  - PIN tidak valid / sudah terpakai -> ditolak, tidak ada akun tercipta.
  *  - Username kembar -> ditolak.
  *  - NIK KTP wajib 16 digit dan unik -> simpangan ditolak, tidak ada akun.
@@ -102,6 +103,33 @@ it('referral yang belum punya poin PA -> ditolak, tidak ada akun tercipta', func
     expect(Member::count())->toBe(1)   // cuma sponsor
         ->and(Transaction::count())->toBe(0)
         ->and($pin->fresh()->status)->toBe('issued');
+});
+
+it('akun PIN gratis boleh jadi sponsor walau PA masih 0', function () {
+    $sponsor = member('reseller');
+
+    Pin::create([
+        'code' => 'FREE'.strtoupper(substr(uniqid(), -9)),
+        'type' => 'registrasi_upgrade',
+        'target_rank' => 'reseller',
+        'points' => 0,
+        'price' => 0,
+        'is_free' => true,
+        'status' => 'used',
+        'used_by_member_id' => $sponsor->id,
+        'used_at' => now(),
+    ]);
+
+    $pin = pinDaftarPaket(1);
+
+    daftar(['code' => $pin->code, 'referral' => $sponsor->username])
+        ->assertRedirect('/beranda')
+        ->assertSessionHasNoErrors();
+
+    $baru = Member::orderByDesc('id')->first();
+    expect($baru->sponsor_id)->toBe($sponsor->id)
+        ->and($sponsor->pointTotal('pa'))->toBe(1)
+        ->and($sponsor->pointTotal('pr'))->toBe(1);
 });
 
 it('referral diisi tapi tidak ditemukan -> ditolak, tidak ada akun tercipta', function () {

@@ -13,7 +13,8 @@ use Illuminate\Testing\TestResponse;
  * Admin bisa menerbitkan PIN gratis (0 poin, Rp 0) dengan peringkat target
  * reseller/agent/distributor. Member yang mendaftar dengan PIN gratis langsung
  * mendapat peringkat target, tanpa poin PR/PA pribadi, dan tanpa bonus sponsor.
- * Kalau diisi, sponsor harus sudah punya poin PA.
+ * Kalau diisi, sponsor berbayar harus sudah punya poin PA; akun PIN gratis
+ * dikecualikan supaya mereka bisa mulai membangun jaringan.
  */
 if (! function_exists('adminGratis')) {
     function adminGratis(): Admin
@@ -99,7 +100,7 @@ it('daftar pakai PIN gratis -> rank target, 0 poin, sponsor NULL', function () {
         ->and($pin->fresh()->status)->toBe('used');
 });
 
-it('tidak bisa pilih sponsor yang belum punya poin', function () {
+it('tidak bisa pilih sponsor berbayar yang belum punya poin', function () {
     $sponsor = member('reseller');
     $pin = buatPinGratis('reseller');
 
