@@ -90,8 +90,8 @@ class RegistrasiController extends Controller
 
         try {
             $anggota = DB::transaction(function () use ($data, $pin, $sponsor) {
-                // PIN gratis tidak menyimpan sponsor_id — hanya diverifikasi PA-nya
-                // supaya tidak terjadi akun siluman masuk jaringan.
+                // PIN gratis tetap menyimpan sponsor: downline harus muncul di
+                // genealogi walau poin join-nya 0 (Owner 10 Nov).
                 $baru = Member::create([
                     'username'  => $data['username'],
                     'name'      => $data['name'],
@@ -99,7 +99,7 @@ class RegistrasiController extends Controller
                     'address'   => $data['address'] ?? null,
                     'nik_ktp'   => $data['nik_ktp'],
                     'password'  => $data['password'],
-                    'sponsor_id' => $pin->is_free ? null : $sponsor?->id,
+                    'sponsor_id' => $sponsor?->id,
                     // Selalu mulai Reseller; TransactionPoster yang menaikkan ke
                     // target_rank (PIN gratis) supaya RankHistory tetap tercatat.
                     'rank'      => 'reseller',
