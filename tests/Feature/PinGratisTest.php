@@ -84,7 +84,7 @@ it('admin bisa buat PIN gratis dengan rank target', function () {
         ->and($pin->status)->toBe('issued');
 });
 
-it('daftar pakai PIN gratis -> rank target, 0 poin, sponsor NULL', function () {
+it('daftar pakai PIN gratis tanpa referral -> rank target, 0 poin, sponsor NULL', function () {
     $pin = buatPinGratis('agent');
 
     daftarGratis($pin)
@@ -138,8 +138,40 @@ it('bisa pilih sponsor yang sudah punya poin', function () {
         ->assertSessionHasNoErrors();
 
     $baru = Member::orderByDesc('id')->first();
-    expect($baru->sponsor_id)->toBeNull()
+    expect($baru->sponsor_id)->toBe($sponsor->id)
         ->and($baru->rank)->toBe('distributor')
         ->and($baru->pointTotal('pr'))->toBe(0)
         ->and($baru->pointTotal('pa'))->toBe(0);
+});
+
+it('PIN gratis dua-duanya tetap terhubung walau sponsor masih 0 PA', function () {
+    $sponsor = member('reseller');
+
+    Pin::create([
+        'code' => 'FREE'.strtoupper(substr(uniqid(), -9)),
+        'type' => 'registrasi_upgrade',
+        'target_rank' => 'reseller',
+        'points' => 0,
+        'price' => 0,
+        'is_free' => true,
+        'status' => 'used',
+        'used_by_member_id' => $sponsor->id,
+        'used_at' => now(),
+    ]);
+
+    $pin = buatPinGratis('agent');
+
+    daftarGratis($pin, ['referral' => $sponsor->username])
+        ->assertRedirect('/beranda')
+        ->assertSessionHasNoErrors();
+
+    $baru = Member::orderByDesc('id')->first();
+    expect($baru->sponsor_id)->toBe($sponsor->id)
+        ->and($sponsor->downlines()->whereKey($baru->id)->exists())->toBeTrue()
+        ->and($sponsor->pointTotal('pa'))->toBe(0)
+        ->and($sponsor->pointTotal('pr'))->toBe(0);
+
+    test()->actingAs($sponsor, 'web')->get('/pohon')
+        ->assertOk()
+        ->assertSee($baru->username);
 });
